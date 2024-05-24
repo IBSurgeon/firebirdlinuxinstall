@@ -1,6 +1,14 @@
 # Firebird Linux Installation Scripts
 1-step installations scripts to install Firebird 5, 4, 3, 2.5 (vanilla or HQbird) for all popular Linux distros with OS optimizations
 
+## What these scripts do:
+* Download and install pre-requisites libraries and packages
+* Adjust necessary OS parameters (vm.max_map_count)
+* Download the latest Firebird tarball or Firebird+HQbird archives from official sources
+* Install Firebird or Firebird +HQbird
+* Add necessary ports to firewalls
+
+
 ## How to use 1-step installation script
 
 * Download script
