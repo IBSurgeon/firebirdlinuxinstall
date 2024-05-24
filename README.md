@@ -14,4 +14,9 @@ sudo chmod +x fb_hqbird_ub22-25.sh
 sudo ./fb_hqbird_ub22-25.sh
 ```
 
-
+### Example for CentOS7, Firebird 3.0 vanilla
+```
+sudo wget https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/main/centos7/fb_vanilla_centos7-30.sh
+sudo chmod +x fb_vanilla_centos7-30.sh
+sudo ./fb_vanilla_centos7-30.sh
+```
