@@ -8,9 +8,9 @@
 * run it
 
 Example for Ubuntu 22, Firebird 2.5 HQbird
-
+----
 sudo wget https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/main/ubuntu22/fb_hqbird_ub22-25.sh
 sudo chmod +x fb_hqbird_ub22-25.sh
 sudo ./fb_hqbird_ub22-25.sh
-
+----
 
