@@ -8,6 +8,7 @@ FB_VER=5.0
 FTP_URL="https://cc.ib-aid.com/download/distr"
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
+ENOUGH_MEM=7168000
 
 download_file(){
     url=$1
@@ -114,6 +115,28 @@ sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' /opt/firebird/firebird.c
 sed -i 's/ftpsrv.passivePorts=40000-40005/ftpsrv.passivePorts=40000-40000/g' /opt/hqbird/conf/ftpsrv.properties
 chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/databases.conf
 
+echo Enabling HQbird services  ==================================================
+# How much physical memory do we have?
+m=$(cat /proc/meminfo | grep MemTotal | awk '{print $2}')
+
+if [ "$m" -ge "$ENOUGH_MEM" ]; then
+	echo "Enabling ALL HQbird services"			# Enough memory
+        svc_list="hqbird fbccamv fbcclauncher fbcctracehorse"
+else
+        echo "Not enough memory to run all HQbird services"	# Not enough memory
+        echo "At least 8GB system memory required"
+        echo "Enabling only core service"	
+        svc_list="hqbird"
+fi
+
+echo Restarting services ========================================================
+systemctl stop firebird
+systemctl enable $svc_list
+systemctl restart $svc_list
+sleep 10
+
+echo Modifying firewall ports  ==================================================
+
 firewall-cmd --permanent --zone=public --add-port=8082/tcp  # 1) admin console
 firewall-cmd --permanent --zone=public --add-port=8083/tcp  # 2) trace monitoring
 firewall-cmd --permanent --zone=public --add-port=8721/tcp  # 3) internal ftp server
@@ -122,8 +145,8 @@ firewall-cmd --permanent --zone=public --add-port=3059/tcp  # 5) FB RemoteAuxPor
 firewall-cmd --permanent --zone=public --add-port=40000/tcp # 6) internal ftp server additional port
 firewall-cmd --reload
 
-systemctl enable hqbird fbccamv fbcclauncher fbcctracehorse
-systemctl restart hqbird fbccamv fbcclauncher fbcctracehorse
+echo Finally restarting services ===============================================
+systemctl restart firebird
 
 # cleanup
 if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi
