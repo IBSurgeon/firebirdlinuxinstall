@@ -25,7 +25,7 @@ download_file(){
           exit 0;;
       67) echo "Wrong login / password"
               exit 0;;
-      78) echo "File $fb_url/$fb_file $does not exist on server"
+      78) echo "File $url does not exist on server"
           exit 0;;
     esac
 }
@@ -59,8 +59,9 @@ yes 'masterkey' | ./install.sh
 cd $OLD_DIR
 echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
 #cp -rf $TMP_DIR/conf/*.conf /opt/firebird
-service firebird restart 
+service firebird stop
 sleep 5
+service firebird start
 
 echo Installing HQbird ========================================================
 
@@ -95,13 +96,14 @@ mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv
 cp -R /opt/hqbird/conf/.defaults/server/* /opt/hqbird/conf/agent/servers/hqbirdsrv
 sed -i 's#server.installation =.*#server.installation=/opt/firebird#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 sed -i 's#server.bin.*#server.bin = ${server.installation}/bin#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
+sed -i 's#server.id = .*#server.id = hqbirdsrv#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 
 java -Djava.net.preferIPv4Stack=true -Djava.awt.headless=true -Xms128m -Xmx192m -XX:+UseG1GC -jar /opt/hqbird/dataguard.jar -config-directory=/opt/hqbird/conf -default-output-directory=/opt/hqbird/outdataguard/ > /dev/null &
 sleep 5
 java -jar /opt/hqbird/dataguard.jar -register -regemail="linuxauto@ib-aid.com" -regpaswd="L8ND44AD" -installid=/opt/hqbird/conf/installid.bin -unlock=/opt/hqbird/conf/unlock -license="T"
-
-pkill -f dataguard.jar
 sleep 5
+pkill -f dataguard.jar
+sleep 3
 
 echo Registering test database =================================================
 
@@ -136,7 +138,7 @@ service firebird stop
 systemctl enable $svc_list
 systemctl restart $svc_list
 sleep 10
-service firebird restart
+service firebird start
 
 # cleanup
 if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi

@@ -33,7 +33,7 @@ echo "vm.max_map_count = 256000" >> /etc/sysctl.conf
 sysctl -p
 
 apt update
-apt install --no-install-recommends -y net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo xz-utils file libtommath1 libicu74
+apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo xz-utils file libtommath1 libicu74
 ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
 ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 locale-gen "en_US.UTF-8"
@@ -51,8 +51,9 @@ echo Running FB installer =====================================================
 yes 'masterkey' | ./install.sh
 cd $OLD_DIR
 echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
-service firebird restart 
+service firebird stop 
 sleep 5
+service firebird start 
 
 # cleanup
 if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi

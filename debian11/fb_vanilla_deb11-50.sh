@@ -5,7 +5,7 @@
 # This script is licensed under IDPL https://firebirdsql.org/en/initial-developer-s-public-license-version-1-0/
 
 FB_VER=5.0
-FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/v5.0.0/Firebird-5.0.0.1306-0-linux-x64.tar.gz"
+FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/v5.0.1/Firebird-5.0.1.1469-0-linux-x64.tar.gz"
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 

@@ -51,7 +51,8 @@ echo Running FB installer =====================================================
 yes 'masterkey' | ./install.sh
 cd $OLD_DIR
 echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
-service firebird restart 
+service firebird stop 
+service firebird start 
 
 firewall-cmd --permanent --zone=public --add-port=3050/tcp  # 4) FB RemoteServicePort
 firewall-cmd --reload

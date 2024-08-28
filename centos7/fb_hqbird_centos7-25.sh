@@ -25,7 +25,7 @@ download_file(){
           exit 0;;
       67) echo "Wrong login / password"
               exit 0;;
-      78) echo "File $fb_url/$fb_file $does not exist on server"
+      78) echo "File $url does not exist on server"
           exit 0;;
     esac
 }
@@ -94,24 +94,24 @@ mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv
 cp -R /opt/hqbird/conf/.defaults/server/* /opt/hqbird/conf/agent/servers/hqbirdsrv
 sed -i 's#server.installation =.*#server.installation=/opt/firebird#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 sed -i 's#server.bin.*#server.bin = ${server.installation}/bin#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
+sed -i 's#server.id = .*#server.id = hqbirdsrv#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 
 java -Djava.net.preferIPv4Stack=true -Djava.awt.headless=true -Xms128m -Xmx192m -XX:+UseG1GC -jar /opt/hqbird/dataguard.jar -config-directory=/opt/hqbird/conf -default-output-directory=/opt/hqbird/outdataguard/ > /dev/null &
 sleep 5
 java -jar /opt/hqbird/dataguard.jar -register -regemail="linuxauto@ib-aid.com" -regpaswd="L8ND44AD" -installid=/opt/hqbird/conf/installid.bin -unlock=/opt/hqbird/conf/unlock -license="T"
 
 pkill -f dataguard.jar
-sleep 5
+sleep 3
 
 echo Registering test database =================================================
 
 mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
-cp -R /opt/hqbird/conf/.defaults/database3/* /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
-java -jar /opt/hqbird/dataguard.jar -regdb="/opt/firebird/examples/empbuild/employee.fdb" -srvver=3 -config-directory="/opt/hqbird/conf" -default-output-directory="/opt/hqbird/outdataguard"
+cp -R /opt/hqbird/conf/.defaults/database2/* /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
+java -jar /opt/hqbird/dataguard.jar -regdb="/opt/firebird/examples/empbuild/employee.fdb" -srvver=2 -config-directory="/opt/hqbird/conf" -default-output-directory="/opt/hqbird/outdataguard"
 rm -rf /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
 
 sed -i 's/db.replication_role=.*/db.replication_role=switchedoff/g' /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/*/database.properties
 sed -i 's/job.enabled.*/job.enabled=false/g' /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/*/jobs/replmon/job.properties
-sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' /opt/firebird/firebird.conf
 #sed -i 's/ftpsrv.homedir=/ftpsrv.homedir=\/opt\/database/g' /opt/hqbird/conf/ftpsrv.properties
 sed -i 's/ftpsrv.passivePorts=40000-40005/ftpsrv.passivePorts=40000-40000/g' /opt/hqbird/conf/ftpsrv.properties
 chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/databases.conf
@@ -148,7 +148,7 @@ firewall-cmd --reload
 echo Finally restarting services ===============================================
 systemctl restart $svc_list
 sleep 10
-service firebird restart
+service firebird start
 
 # cleanup
 if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi

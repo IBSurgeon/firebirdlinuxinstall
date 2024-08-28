@@ -50,8 +50,9 @@ echo Running FB installer =====================================================
 yes 'masterkey' | ./install.sh
 cd $OLD_DIR
 echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
-service firebird restart 
+service firebird stop
 sleep 5
+service firebird start 
 
 # cleanup
 if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi

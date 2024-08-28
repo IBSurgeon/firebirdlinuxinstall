@@ -5,7 +5,7 @@
 # This script is licensed under IDPL https://firebirdsql.org/en/initial-developer-s-public-license-version-1-0/
 
 FB_VER=4.0
-FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/v4.0.4/Firebird-4.0.4.3010-0.amd64.tar.gz"
+FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/v4.0.5/Firebird-4.0.5.3140-0.amd64.tar.gz"
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 
@@ -33,7 +33,7 @@ echo "vm.max_map_count = 256000" >> /etc/sysctl.conf
 sysctl -p
 
 apt update
-apt install --no-install-recommends -y net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo xz-utils file libtommath1 libicu74
+apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo xz-utils file libtommath1 libicu74
 
 ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
 ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5

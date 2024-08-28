@@ -34,7 +34,7 @@ echo "vm.max_map_count = 256000" >> /etc/sysctl.conf
 sysctl -p
 
 apt update
-apt install --no-install-recommends -y net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu74 openjdk-8-jre
+apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu74 openjdk-8-jre
 ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
 ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 locale-gen "en_US.UTF-8"
@@ -93,13 +93,14 @@ mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv
 cp -R /opt/hqbird/conf/.defaults/server/* /opt/hqbird/conf/agent/servers/hqbirdsrv
 sed -i 's#server.installation =.*#server.installation=/opt/firebird#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 sed -i 's#server.bin.*#server.bin = ${server.installation}/bin#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
+sed -i 's#server.id = .*#server.id = hqbirdsrv#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 
 java -Djava.net.preferIPv4Stack=true -Djava.awt.headless=true -Xms128m -Xmx192m -XX:+UseG1GC -jar /opt/hqbird/dataguard.jar -config-directory=/opt/hqbird/conf -default-output-directory=/opt/hqbird/outdataguard/ > /dev/null &
 sleep 5
 java -jar /opt/hqbird/dataguard.jar -register -regemail="linuxauto@ib-aid.com" -regpaswd="L8ND44AD" -installid=/opt/hqbird/conf/installid.bin -unlock=/opt/hqbird/conf/unlock -license="T"
-
-pkill -f dataguard.jar
 sleep 5
+pkill -f dataguard.jar
+sleep 3
 
 echo Registering test database =================================================
 
