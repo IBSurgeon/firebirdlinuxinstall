@@ -6,6 +6,10 @@
 
 FB_VER=2.5
 FTP_URL="https://cc.ib-aid.com/download/distr"
+
+SYSCTL=/etc/sysctl.conf
+SYS_STR="vm.max_map_count"
+
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 ENOUGH_MEM=7168000
@@ -36,14 +40,18 @@ dnf -y install epel-release
 dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs
 dnf -y install java-1.8.0-openjdk-headless
 
-echo "vm.max_map_count = 256000" >> /etc/sysctl.conf
-sysctl -p
+if grep -q $SYS_STR $SYSCTL; then
+	echo "Parameter $SYS_STR already set in $SYSCTL"
+else
+	echo "$SYS_STR = 256000" >> $SYSCTL
+	sysctl -p
+fi
 
 ln -s libtommath.so.1 /lib64/libtommath.so.0
 
 ## Firebird & Hqbird download
 download_file $FTP_URL/$FB_VER/fb.tar.xz $TMP_DIR "FB installer"
-#download_file $FTP_URL/$FB_VER/conf.tar.xz $TMP_DIR "FB config files"
+download_file $FTP_URL/$FB_VER/conf.tar.xz $TMP_DIR "FB config files"
 download_file $FTP_URL/amvmon.tar.xz $TMP_DIR "AMV & MON installer"
 download_file $FTP_URL/distrib.tar.xz $TMP_DIR "DG installer"
 download_file $FTP_URL/hqbird.tar.xz $TMP_DIR "HQbird installer"
@@ -52,7 +60,7 @@ echo Extracting FB installer ==================================================
 
 mkdir $TMP_DIR/fb $TMP_DIR/conf
 tar xvf $TMP_DIR/fb.tar.xz -C $TMP_DIR/fb --strip-components=1 > /dev/null
-#tar xvf $TMP_DIR/conf.tar.xz -C $TMP_DIR/conf  > /dev/null
+tar xvf $TMP_DIR/conf.tar.xz -C $TMP_DIR/conf  > /dev/null
 cd $TMP_DIR/fb
 
 echo Running FB installer =====================================================
@@ -61,7 +69,7 @@ yes 'masterkey' | ./install.sh
 #./install.sh -silent
 cd $OLD_DIR
 echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
-#cp -rf $TMP_DIR/conf/*.conf /opt/firebird
+cp -rf $TMP_DIR/conf/*.conf /opt/firebird
 
 echo Installing HQbird ========================================================
 
