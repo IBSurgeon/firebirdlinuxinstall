@@ -6,6 +6,10 @@
 
 FB_VER=3.0
 FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/v3.0.12/Firebird-3.0.12.33787-0.amd64.tar.gz"
+
+SYSCTL=/etc/sysctl.conf
+SYS_STR="vm.max_map_count"
+
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 
@@ -29,8 +33,12 @@ download_file(){
     esac
 }
 
-echo "vm.max_map_count = 256000" >> /etc/sysctl.conf
-sysctl -p
+if grep -q $SYS_STR $SYSCTL; then
+	echo "Parameter $SYS_STR already set in $SYSCTL"
+else
+	echo "$SYS_STR = 256000" >> $SYSCTL
+	sysctl -p
+fi
 
 dnf update -y
 dnf install -y oracle-epel-release-el8

@@ -6,6 +6,10 @@
 
 FB_VER=2.5
 FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/FirebirdCS-2.5.9.27139-0.amd64.tar.gz"
+
+SYSCTL=/etc/sysctl.conf
+SYS_STR="vm.max_map_count"
+
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 
@@ -29,8 +33,12 @@ download_file(){
     esac
 }
 
-echo "vm.max_map_count = 256000" >> /etc/sysctl.conf
-sysctl -p
+if grep -q $SYS_STR $SYSCTL; then
+	echo "Parameter $SYS_STR already set in $SYSCTL"
+else
+	echo "$SYS_STR = 256000" >> $SYSCTL
+	sysctl -p
+fi
 
 apt update 
 apt install --no-install-recommends -y net-tools libtommath1 libicu72 wget unzip gettext libncurses5 curl tar tzdata locales sudo xz-utils file apt-transport-https gpg
