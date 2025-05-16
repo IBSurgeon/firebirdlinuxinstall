@@ -4,7 +4,7 @@
 # This script is provided AS IS, without any warranty. 
 # This script is licensed under IDPL https://firebirdsql.org/en/initial-developer-s-public-license-version-1-0/
 
-FB_VER=3.0
+FB_VER=2.5
 FTP_URL="https://cc.ib-aid.com/download/distr"
 
 SYSCTL=/etc/sysctl.conf
@@ -30,7 +30,7 @@ download_file(){
 	   * ) exit_script 1 "HTTP error ($m)";;
     esac
     case $r in
-       0)  echo "OK";;	  
+       0) echo "OK";;	  
       23) exit_script $r "Write error";;
       67) exit_script $r "Wrong login / password";;
       78) exit_script $r "File $url does not exist on server";;
@@ -68,11 +68,10 @@ else
 	sysctl -p
 fi
 
-yum update -y
-yum install -y epel-release
-yum install -y wget ncurses ncurses-compat-libs libtommath icu lsof mc java 
+zypper -n update
+zypper -n install insserv sysvinit-tools wget libtommath1 libicu73_2 lsof tar mc java-1_8_0-openjdk
 
-ln -s libtommath.so.1 /lib64/libtommath.so.0
+ln -s libtommath.so.1 /usr/lib64/libtommath.so.0
 
 ## Firebird & Hqbird download
 download_file $FTP_URL/$FB_VER/fb.tar.xz $TMP_DIR "FB installer"
@@ -93,6 +92,8 @@ echo Running FB installer =====================================================
 yes 'masterkey' | ./install.sh
 #./install.sh -silent
 cd $OLD_DIR
+sed -i 's#-r /etc/SuSE-release#-r /etc/os-release#g' /opt/firebird/bin/changeMultiConnectMode.sh
+echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
 cp -rf $TMP_DIR/conf/*.conf /opt/firebird
 
 echo Installing HQbird ========================================================
@@ -108,8 +109,8 @@ tar xvf $TMP_DIR/amvmon.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Erro
 tar xvf $TMP_DIR/distrib.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Error unpacking DG archive"
 tar xvf $TMP_DIR/hqbird.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Error unpacking HQ archive"
 
-cp /opt/hqbird/amv/fbccamv.service /opt/hqbird/mon/init/systemd/fbcclauncher.service /opt/hqbird/mon/init/systemd/fbcctracehorse.service /opt/hqbird/init/systemd/hqbird.service /lib/systemd/system
-chmod -x /lib/systemd/system/fbcc*.service
+cp /opt/hqbird/amv/fbccamv.service /opt/hqbird/mon/init/systemd/fbcclauncher.service /opt/hqbird/mon/init/systemd/fbcctracehorse.service /opt/hqbird/init/systemd/hqbird.service /usr/lib/systemd/system
+chmod -x /usr/lib/systemd/system/fbcc*.service
 systemctl daemon-reload
 
 if [ ! -d /opt/hqbird/outdataguard ]; then 
@@ -166,7 +167,7 @@ else
 fi
 
 echo Restarting services ========================================================
-systemctl stop firebird-superserver
+service firebird stop
 systemctl enable $svc_list
 systemctl restart $svc_list
 sleep 10
@@ -177,14 +178,13 @@ firewall-cmd --permanent --zone=public --add-port=8082/tcp  # 1) admin console
 firewall-cmd --permanent --zone=public --add-port=8083/tcp  # 2) trace monitoring
 firewall-cmd --permanent --zone=public --add-port=8721/tcp  # 3) internal ftp server
 firewall-cmd --permanent --zone=public --add-port=3050/tcp  # 4) FB RemoteServicePort
-firewall-cmd --permanent --zone=public --add-port=3059/tcp  # 5) FB RemoteAuxPort
-firewall-cmd --permanent --zone=public --add-port=40000/tcp # 6) internal ftp server additional port
+firewall-cmd --permanent --zone=public --add-port=40000/tcp # 5) internal ftp server additional port
 firewall-cmd --reload
 
 echo Finally restarting services ===============================================
 systemctl restart $svc_list
-sleep 15
-systemctl restart firebird-superserver
+sleep 10
+service firebird start
 
 exit_script 0
 

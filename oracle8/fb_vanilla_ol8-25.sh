@@ -6,6 +6,7 @@
 
 FB_VER=2.5
 FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/FirebirdCS-2.5.9.27139-0.amd64.tar.gz"
+FTP_URL="https://cc.ib-aid.com/download/distr"
 
 SYSCTL=/etc/sysctl.conf
 SYS_STR="vm.max_map_count"
@@ -20,17 +21,44 @@ download_file(){
     fname=$(basename -- "$url")
 
     echo "Downloading $name..."
-    curl --location $url --output $tmp/$fname --progress-bar
-
-    case $? in
-      0)  echo "OK";;	  
-      23) echo "Write error"
-          exit 0;;
-      67) echo "Wrong login / password"
-              exit 0;;
-      78) echo "File $url does not exist on server"
-          exit 0;;
+    m=$(curl -w "%{http_code}" --location $url --output $tmp/$fname --progress-bar)
+    r=$?
+    s=""
+    case $m in
+	"200") s="OK";;
+	"404") exit_script 1 "File not found on server";;
+	   * ) exit_script 1 "HTTP error ($m)";;
     esac
+    case $r in
+       0)  echo "OK";;	  
+      23) exit_script $r "Write error";;
+      67) exit_script $r "Wrong login / password";;
+      78) exit_script $r "File $url does not exist on server";;
+       *) exit_script $r "Error downloading file ($r)";;
+    esac
+}
+
+exit_script(){
+	p1=$1
+	p2=$2
+	if [[ -z "$p1" ]]; then
+		p1=0				# p1 was empty
+	fi
+	# cleanup
+	if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi
+	if [ $p1 -eq 0 ]; then		# normal termination
+		if [[ -z "$p2" ]]; then
+			p2="Script terminated normally"
+		fi
+		echo $p2
+		exit 0
+	else
+		if [[ -z "$p2" ]]; then
+			p2="An error occured during script execution ($p1)"
+		fi
+		echo $p2
+		exit $p1
+	fi
 }
 
 if grep -q $SYS_STR $SYSCTL; then
@@ -47,11 +75,13 @@ dnf install -y tar wget mc ncurses-compat-libs libicu libtommath
 ln -s libtommath.so.1 /lib64/libtommath.so.0
 
 download_file $FB_URL $TMP_DIR "FB installer"
+download_file $FTP_URL/$FB_VER/confv.tar.xz $TMP_DIR "FB config files"
 
 echo Extracting FB installer ==================================================
 
-mkdir $TMP_DIR/fb 
-tar xvf $TMP_DIR/*.gz -C $TMP_DIR/fb --strip-components=1 > /dev/null
+mkdir $TMP_DIR/fb $TMP_DIR/conf
+tar xvf $TMP_DIR/*.gz -C $TMP_DIR/fb --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB archive"
+tar xvf $TMP_DIR/confv.tar.xz -C $TMP_DIR/conf > /dev/null || exit_script 1 "Error unpacking conf archive"
 cd $TMP_DIR/fb
 
 echo Running FB installer =====================================================
@@ -60,10 +90,11 @@ yes 'masterkey' | ./install.sh
 #./install.sh -silent
 cd $OLD_DIR
 echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
+cp -rf $TMP_DIR/conf/*.conf /opt/firebird
 
 firewall-cmd --permanent --zone=public --add-port=3050/tcp  # 4) FB RemoteServicePort
 firewall-cmd --permanent --zone=public --add-port=3059/tcp  # 5) FB RemoteAuxPort
 firewall-cmd --reload
 
-# cleanup
-if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi
+exit_script 0
+

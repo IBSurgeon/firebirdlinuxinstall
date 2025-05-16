@@ -21,17 +21,44 @@ download_file(){
     fname=$(basename -- "$url")
 
     echo "Downloading $name..."
-    curl $url --output $tmp/$fname --progress-bar
-
-    case $? in
-      0)  echo "OK";;	  
-      23) echo "Write error"
-          exit 0;;
-      67) echo "Wrong login / password"
-              exit 0;;
-      78) echo "File $url does not exist on server"
-          exit 0;;
+    m=$(curl -w "%{http_code}" --location $url --output $tmp/$fname --progress-bar)
+    r=$?
+    s=""
+    case $m in
+	"200") s="OK";;
+	"404") exit_script 1 "File not found on server";;
+	   * ) exit_script 1 "HTTP error ($m)";;
     esac
+    case $r in
+       0)  echo "OK";;	  
+      23) exit_script $r "Write error";;
+      67) exit_script $r "Wrong login / password";;
+      78) exit_script $r "File $url does not exist on server";;
+       *) exit_script $r "Error downloading file ($r)";;
+    esac
+}
+
+exit_script(){
+	p1=$1
+	p2=$2
+	if [[ -z "$p1" ]]; then
+		p1=0				# p1 was empty
+	fi
+	# cleanup
+	if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi
+	if [ $p1 -eq 0 ]; then		# normal termination
+		if [[ -z "$p2" ]]; then
+			p2="Script terminated normally"
+		fi
+		echo $p2
+		exit 0
+	else
+		if [[ -z "$p2" ]]; then
+			p2="An error occured during script execution ($p1)"
+		fi
+		echo $p2
+		exit $p1
+	fi
 }
 
 if grep -q $SYS_STR $SYSCTL; then
@@ -56,8 +83,8 @@ download_file $FTP_URL/hqbird.tar.xz $TMP_DIR "HQbird installer"
 echo Extracting FB installer ==================================================
 
 mkdir $TMP_DIR/fb $TMP_DIR/conf
-tar xvf $TMP_DIR/fb.tar.xz -C $TMP_DIR/fb --strip-components=1 > /dev/null
-tar xvf $TMP_DIR/conf.tar.xz -C $TMP_DIR/conf  > /dev/null
+tar xvf $TMP_DIR/fb.tar.xz -C $TMP_DIR/fb --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB archive"
+tar xvf $TMP_DIR/conf.tar.xz -C $TMP_DIR/conf  > /dev/null || exit_script 1 "Error unpacking conf archive"
 cd $TMP_DIR/fb
 
 echo Running FB installer =====================================================
@@ -80,9 +107,9 @@ if [ ! -d /opt/hqbird ]; then
 	echo "Directory /opt/hqbird already exists"
 fi
 
-tar xvf $TMP_DIR/amvmon.tar.xz -C /opt/hqbird > /dev/null
-tar xvf $TMP_DIR/distrib.tar.xz -C /opt/hqbird > /dev/null
-tar xvf $TMP_DIR/hqbird.tar.xz -C /opt/hqbird > /dev/null
+tar xvf $TMP_DIR/amvmon.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Error unpacking AMV archive"
+tar xvf $TMP_DIR/distrib.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Error unpacking DG archive"
+tar xvf $TMP_DIR/hqbird.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Error unpacking HQ archive"
 
 cp /opt/hqbird/amv/fbccamv.service /opt/hqbird/mon/init/systemd/fbcclauncher.service /opt/hqbird/mon/init/systemd/fbcctracehorse.service /opt/hqbird/init/systemd/hqbird.service /lib/systemd/system
 chmod -x /lib/systemd/system/fbcc*.service
@@ -108,7 +135,7 @@ sed -i 's#server.id = .*#server.id = hqbirdsrv#g' /opt/hqbird/conf/agent/servers
 
 java -Djava.net.preferIPv4Stack=true -Djava.awt.headless=true -Xms128m -Xmx192m -XX:+UseG1GC -jar /opt/hqbird/dataguard.jar -config-directory=/opt/hqbird/conf -default-output-directory=/opt/hqbird/outdataguard/ > /dev/null &
 sleep 5
-java -jar /opt/hqbird/dataguard.jar -register -regemail="linuxauto@ib-aid.com" -regpaswd="L8ND44AD" -installid=/opt/hqbird/conf/installid.bin -unlock=/opt/hqbird/conf/unlock -license="T"
+java -jar /opt/hqbird/dataguard.jar -register -regemail="linuxauto@ib-aid.com" -regpaswd="L8ND44AD" -installid=/opt/hqbird/conf/installid.bin -unlock=/opt/hqbird/conf/unlock -license="M"
 sleep 5
 pkill -f dataguard.jar
 sleep 3
@@ -148,5 +175,5 @@ systemctl restart $svc_list
 sleep 10
 service firebird start
 
-# cleanup
-if [ -d $TMP_DIR ]; then rm -rf $TMP_DIR; fi
+exit_script 0
+

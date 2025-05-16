@@ -30,7 +30,7 @@ download_file(){
 	   * ) exit_script 1 "HTTP error ($m)";;
     esac
     case $r in
-       0)  echo "OK";;	  
+       0) echo "OK";;	  
       23) exit_script $r "Write error";;
       67) exit_script $r "Wrong login / password";;
       78) exit_script $r "File $url does not exist on server";;
@@ -68,11 +68,10 @@ else
 	sysctl -p
 fi
 
-yum update -y
-yum install -y epel-release
-yum install -y wget ncurses ncurses-compat-libs libtommath icu lsof mc java 
+zypper -n update
+zypper -n install wget libtommath1 libicu73_2 lsof tar mc java-1_8_0-openjdk
 
-ln -s libtommath.so.1 /lib64/libtommath.so.0
+ln -s libtommath.so.1 /usr/lib64/libtommath.so.0
 
 ## Firebird & Hqbird download
 download_file $FTP_URL/$FB_VER/fb.tar.xz $TMP_DIR "FB installer"
@@ -108,8 +107,8 @@ tar xvf $TMP_DIR/amvmon.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Erro
 tar xvf $TMP_DIR/distrib.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Error unpacking DG archive"
 tar xvf $TMP_DIR/hqbird.tar.xz -C /opt/hqbird > /dev/null || exit_script 1 "Error unpacking HQ archive"
 
-cp /opt/hqbird/amv/fbccamv.service /opt/hqbird/mon/init/systemd/fbcclauncher.service /opt/hqbird/mon/init/systemd/fbcctracehorse.service /opt/hqbird/init/systemd/hqbird.service /lib/systemd/system
-chmod -x /lib/systemd/system/fbcc*.service
+cp /opt/hqbird/amv/fbccamv.service /opt/hqbird/mon/init/systemd/fbcclauncher.service /opt/hqbird/mon/init/systemd/fbcctracehorse.service /opt/hqbird/init/systemd/hqbird.service /usr/lib/systemd/system
+chmod -x /usr/lib/systemd/system/fbcc*.service
 systemctl daemon-reload
 
 if [ ! -d /opt/hqbird/outdataguard ]; then 
