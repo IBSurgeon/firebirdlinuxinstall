@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Please contact IBSurgeon with any question regarding this script: support@ib-aid.com
 # This script is provided AS IS, without any warranty. 
@@ -80,21 +80,21 @@ else
 	sysctl -p
 fi
 
-apt update 
-apt install --no-install-recommends -y net-tools libtommath1 libicu72 wget unzip gettext libncurses5 curl tar tzdata locales sudo xz-utils file apt-transport-https gpg
+zypper -n update
+zypper -n install wget libtommath1 libicu73_2 lsof tar libncurses5
 
-ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
-locale-gen "en_US.UTF-8"
 
-download_file $FB_URL $TMP_DIR "FB installer"
-download_file $FTP_URL/$FB_VER/confv.tar.xz $TMP_DIR "FB config files"
+ln -s libtommath.so.1 /usr/lib64/libtommath.so.0
+
+download_file $FTP_URL/$FB_VER/fbv.tar.xz $TMP_DIR "FB installer"
+download_file $FTP_URL/$FB_VER/conf.tar.xz $TMP_DIR "FB config files"
 download_file $FTP_URL/$FB_VER/systemd-files.tar.xz $TMP_DIR "Systemd support"
 
 echo Extracting FB installer ==================================================
 
 mkdir $TMP_DIR/fb $TMP_DIR/conf $TMP_DIR/systemd-files
-tar xvf $TMP_DIR/*.gz -C $TMP_DIR/fb --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB archive"
-tar xvf $TMP_DIR/confv.tar.xz -C $TMP_DIR/conf > /dev/null || exit_script 1 "Error unpacking conf archive"
+tar xvf $TMP_DIR/fbv.tar.xz -C $TMP_DIR/fb --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB archive"
+tar xvf $TMP_DIR/conf.tar.xz -C $TMP_DIR/conf  > /dev/null || exit_script 1 "Error unpacking conf archive"
 tar xvf $TMP_DIR/systemd-files.tar.xz -C $TMP_DIR/systemd-files  > /dev/null || exit_script 1 "Error unpacking systemd files"
 
 echo Running FB installer =====================================================
@@ -121,6 +121,15 @@ cd $OLD_DIR
 cp -rf $TMP_DIR/conf/*.conf /opt/firebird
 chown firebird:firebird /opt/firebird/firebird.conf /opt/firebird/aliases.conf
 /opt/firebird/bin/changeSystemdMode.sh thread
+
+echo Modifying firewall ports  ================================================
+
+firewall-cmd --permanent --zone=public --add-port=8082/tcp  # 1) admin console
+firewall-cmd --permanent --zone=public --add-port=8083/tcp  # 2) trace monitoring
+firewall-cmd --permanent --zone=public --add-port=8721/tcp  # 3) internal ftp server
+firewall-cmd --permanent --zone=public --add-port=3050/tcp  # 4) FB RemoteServicePort
+firewall-cmd --permanent --zone=public --add-port=40000/tcp # 5) internal ftp server additional port
+firewall-cmd --reload
 
 echo Postinstall actions ======================================================
 

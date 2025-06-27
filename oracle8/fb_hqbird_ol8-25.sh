@@ -14,6 +14,18 @@ TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 ENOUGH_MEM=7168000
 
+MOD_SCRIPT=$TMP_DIR/fb/scripts/postinstall.sh
+#------------------------------------------------------------------------
+#  register/start/stop server using systemd
+
+SYSTEMCTL=systemctl
+SYSTEMD_DIR=/usr/lib/systemd/system
+[ -d $SYSTEMD_DIR ] || SYSTEMD_DIR=/lib/systemd/system
+
+PROC_SKT_CTRL=firebird.socket
+PROC_SVC_CTRL=firebird@.service
+THRD_SVC_CTRL=firebird.service
+
 download_file(){
     url=$1
     tmp=$2
@@ -30,7 +42,7 @@ download_file(){
 	   * ) exit_script 1 "HTTP error ($m)";;
     esac
     case $r in
-       0)  echo "OK";;	  
+       0) echo "OK";;	  
       23) exit_script $r "Write error";;
       67) exit_script $r "Wrong login / password";;
       78) exit_script $r "File $url does not exist on server";;
@@ -80,21 +92,38 @@ download_file $FTP_URL/$FB_VER/conf.tar.xz $TMP_DIR "FB config files"
 download_file $FTP_URL/amvmon.tar.xz $TMP_DIR "AMV & MON installer"
 download_file $FTP_URL/distrib.tar.xz $TMP_DIR "DG installer"
 download_file $FTP_URL/hqbird.tar.xz $TMP_DIR "HQbird installer"
+download_file $FTP_URL/$FB_VER/systemd-files.tar.xz $TMP_DIR "Systemd support"
 
 echo Extracting FB installer ==================================================
 
-mkdir $TMP_DIR/fb $TMP_DIR/conf
+mkdir $TMP_DIR/fb $TMP_DIR/conf $TMP_DIR/systemd-files
 tar xvf $TMP_DIR/fb.tar.xz -C $TMP_DIR/fb --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB archive"
 tar xvf $TMP_DIR/conf.tar.xz -C $TMP_DIR/conf  > /dev/null || exit_script 1 "Error unpacking conf archive"
-cd $TMP_DIR/fb
+tar xvf $TMP_DIR/systemd-files.tar.xz -C $TMP_DIR/systemd-files  > /dev/null || exit_script 1 "Error unpacking systemd files"
 
 echo Running FB installer =====================================================
 
-yes 'masterkey' | ./install.sh
-#./install.sh -silent
+if [ -e $SYSTEMD_DIR/$PROC_SKT_CTRL -a -e $SYSTEMD_DIR/$PROC_SVC_CTRL -a -e $SYSTEMD_DIR/$THRD_SVC_CTRL ]; then
+        echo "All systemd control files found."
+else
+        echo "One or more systemd control files not found. Copying to $SYSTEMD_DIR"
+        cp $TMP_DIR/systemd-files/{$PROC_SKT_CTRL,$PROC_SVC_CTRL,$THRD_SVC_CTRL} $SYSTEMD_DIR
+        echo "Reloading systemd units"
+        systemctl daemon-reload
+fi
+
+sed -i 's/^startService classic$/#startService classic/g' $MOD_SCRIPT
+sed -i 's/^updateInetdServiceEntry$/#updateInetdServiceEntry/g' $MOD_SCRIPT
+sed -i 's|replaceLineInFile /etc/services|#replaceLineInFile /etc/services|g' $MOD_SCRIPT
+
+cd $TMP_DIR/fb
+
+yes "masterkey" | ./install.sh
+cp $TMP_DIR/systemd-files/changeSystemdMode.sh /opt/firebird/bin/
+
 cd $OLD_DIR
-echo -ne 'thread' | /opt/firebird/bin/changeMultiConnectMode.sh
 cp -rf $TMP_DIR/conf/*.conf /opt/firebird
+/opt/firebird/bin/changeSystemdMode.sh thread
 
 echo Installing HQbird ========================================================
 
@@ -122,6 +151,8 @@ fi
 echo "Running HQbird setup"
 sh /opt/hqbird/hqbird-setup
 rm -f /opt/firebird/plugins/libfbtrace2db.so 2 > /dev/null
+# Store info for uninstall
+echo "/opt/firebird/" > /opt/hqbird/fb-instances.txt
 
 echo Registering HQbird ========================================================
 
@@ -150,7 +181,7 @@ sed -i 's/job.enabled.*/job.enabled=false/g' /opt/hqbird/conf/agent/servers/hqbi
 sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' /opt/firebird/firebird.conf
 #sed -i 's/ftpsrv.homedir=/ftpsrv.homedir=\/opt\/database/g' /opt/hqbird/conf/ftpsrv.properties
 sed -i 's/ftpsrv.passivePorts=40000-40005/ftpsrv.passivePorts=40000-40000/g' /opt/hqbird/conf/ftpsrv.properties
-chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/databases.conf
+chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/aliases.conf
 
 echo Enabling HQbird services  ==================================================
 # How much physical memory do we have?
