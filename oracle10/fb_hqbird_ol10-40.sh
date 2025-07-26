@@ -1,28 +1,16 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Please contact IBSurgeon with any question regarding this script: support@ib-aid.com
 # This script is provided AS IS, without any warranty. 
 # This script is licensed under IDPL https://firebirdsql.org/en/initial-developer-s-public-license-version-1-0/
 
-FB_VER=2.5
+FB_VER=4.0
 FTP_URL="https://cc.ib-aid.com/download/distr"
 
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 ENOUGH_MEM=7168000
 MAX_MAP_COUNT=1000000
-
-MOD_SCRIPT=$TMP_DIR/fb/scripts/postinstall.sh
-#------------------------------------------------------------------------
-#  register/start/stop server using systemd
-
-SYSTEMCTL=systemctl
-SYSTEMD_DIR=/usr/lib/systemd/system
-[ -d $SYSTEMD_DIR ] || SYSTEMD_DIR=/lib/systemd/system
-
-PROC_SKT_CTRL=firebird.socket
-PROC_SVC_CTRL=firebird@.service
-THRD_SVC_CTRL=firebird.service
 
 download_file(){
     url=$1
@@ -40,7 +28,7 @@ download_file(){
 	   * ) exit_script 1 "HTTP error ($m)";;
     esac
     case $r in
-       0) echo "OK";;	  
+       0)  echo "OK";;	  
       23) exit_script $r "Write error";;
       67) exit_script $r "Wrong login / password";;
       78) exit_script $r "File $url does not exist on server";;
@@ -85,11 +73,27 @@ append_str_to_sysctl(){
 
 append_str_to_sysctl "vm.max_map_count = $MAX_MAP_COUNT"
 
-apt update
-apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu74 openjdk-8-jre
-ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
-ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
-locale-gen "en_US.UTF-8"
+dnf update -y
+dnf install -y tar wget mc ncurses-compat-libs libicu libtommath
+ln -s libtommath.so.1 /lib64/libtommath.so.0
+
+echo Installing Adoptium Java 8 ===============================================
+
+cat <<EOF > /etc/yum.repos.d/adoptium.repo
+[Adoptium]
+name=Adoptium
+baseurl=https://packages.adoptium.net/artifactory/rpm/centos/10/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.adoptium.net/artifactory/api/gpg/key/public
+EOF
+
+dnf update -y
+dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm  -y
+dnf update -y
+dnf install -y temurin-8-jre
+chcon -t bin_t /usr/lib/jvm/temurin-8-jre/bin/java
+
 
 ## Firebird & Hqbird download
 download_file $FTP_URL/$FB_VER/fb.tar.xz $TMP_DIR "FB installer"
@@ -97,38 +101,20 @@ download_file $FTP_URL/$FB_VER/conf.tar.xz $TMP_DIR "FB config files"
 download_file $FTP_URL/amvmon.tar.xz $TMP_DIR "AMV & MON installer"
 download_file $FTP_URL/distrib.tar.xz $TMP_DIR "DG installer"
 download_file $FTP_URL/hqbird.tar.xz $TMP_DIR "HQbird installer"
-download_file $FTP_URL/$FB_VER/systemd-files.tar.xz $TMP_DIR "Systemd support"
 
 echo Extracting FB installer ==================================================
 
-mkdir $TMP_DIR/fb $TMP_DIR/conf $TMP_DIR/systemd-files
+mkdir $TMP_DIR/fb $TMP_DIR/conf
 tar xvf $TMP_DIR/fb.tar.xz -C $TMP_DIR/fb --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB archive"
 tar xvf $TMP_DIR/conf.tar.xz -C $TMP_DIR/conf  > /dev/null || exit_script 1 "Error unpacking conf archive"
-tar xvf $TMP_DIR/systemd-files.tar.xz -C $TMP_DIR/systemd-files  > /dev/null || exit_script 1 "Error unpacking systemd files"
+cd $TMP_DIR/fb
 
 echo Running FB installer =====================================================
 
-if [ -e $SYSTEMD_DIR/$PROC_SKT_CTRL -a -e $SYSTEMD_DIR/$PROC_SVC_CTRL -a -e $SYSTEMD_DIR/$THRD_SVC_CTRL ]; then
-        echo "All systemd control files found."
-else
-        echo "One or more systemd control files not found. Copying to $SYSTEMD_DIR"
-        cp $TMP_DIR/systemd-files/{$PROC_SKT_CTRL,$PROC_SVC_CTRL,$THRD_SVC_CTRL} $SYSTEMD_DIR
-        echo "Reloading systemd units"
-        systemctl daemon-reload
-fi
-
-sed -i 's/^startService classic$/#startService classic/g' $MOD_SCRIPT
-sed -i 's/^updateInetdServiceEntry$/#updateInetdServiceEntry/g' $MOD_SCRIPT
-sed -i 's|replaceLineInFile /etc/services|#replaceLineInFile /etc/services|g' $MOD_SCRIPT
-
-cd $TMP_DIR/fb
-
-yes "masterkey" | ./install.sh
-cp $TMP_DIR/systemd-files/changeSystemdMode.sh /opt/firebird/bin/
-
+yes 'masterkey' | ./install.sh
+#./install.sh -silent
 cd $OLD_DIR
 cp -rf $TMP_DIR/conf/*.conf /opt/firebird
-/opt/firebird/bin/changeSystemdMode.sh thread
 
 echo Installing HQbird ========================================================
 
@@ -156,8 +142,8 @@ fi
 echo "Running HQbird setup"
 sh /opt/hqbird/hqbird-setup
 rm -f /opt/firebird/plugins/libfbtrace2db.so 2 > /dev/null
-# Store info for uninstall
-echo "/opt/firebird/" > /opt/hqbird/fb-instances.txt
+rm -f /opt/firebird/plugins/libreplconf.so 2 > /dev/null
+rm -f /opt/firebird/bin/replconf.properties 2 > /dev/null
 
 echo Registering HQbird ========================================================
 
@@ -177,7 +163,7 @@ sleep 3
 echo Registering test database =================================================
 
 mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
-cp -R /opt/hqbird/conf/.defaults/database2/* /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
+cp -R /opt/hqbird/conf/.defaults/database4/* /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
 java -jar /opt/hqbird/dataguard.jar -regdb="/opt/firebird/examples/empbuild/employee.fdb" -srvver=3 -config-directory="/opt/hqbird/conf" -default-output-directory="/opt/hqbird/outdataguard"
 rm -rf /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
 
@@ -186,7 +172,7 @@ sed -i 's/job.enabled.*/job.enabled=false/g' /opt/hqbird/conf/agent/servers/hqbi
 sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' /opt/firebird/firebird.conf
 #sed -i 's/ftpsrv.homedir=/ftpsrv.homedir=\/opt\/database/g' /opt/hqbird/conf/ftpsrv.properties
 sed -i 's/ftpsrv.passivePorts=40000-40005/ftpsrv.passivePorts=40000-40000/g' /opt/hqbird/conf/ftpsrv.properties
-chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/aliases.conf
+chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/databases.conf
 
 echo Enabling HQbird services  ==================================================
 # How much physical memory do we have?
@@ -203,10 +189,23 @@ else
 fi
 
 echo Restarting services ========================================================
-service firebird stop
+systemctl stop firebird
 systemctl enable $svc_list
 systemctl restart $svc_list
 sleep 10
-service firebird start
+
+echo Modifying firewall ports  ==================================================
+
+firewall-cmd --permanent --zone=public --add-port=8082/tcp  # 1) admin console
+firewall-cmd --permanent --zone=public --add-port=8083/tcp  # 2) trace monitoring
+firewall-cmd --permanent --zone=public --add-port=8721/tcp  # 3) internal ftp server
+firewall-cmd --permanent --zone=public --add-port=3050/tcp  # 4) FB RemoteServicePort
+firewall-cmd --permanent --zone=public --add-port=3059/tcp  # 5) FB RemoteAuxPort
+firewall-cmd --permanent --zone=public --add-port=40000/tcp # 6) internal ftp server additional port
+firewall-cmd --reload
+
+echo Finally restarting services ===============================================
+systemctl restart firebird
 
 exit_script 0
+

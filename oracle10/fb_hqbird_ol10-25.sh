@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Please contact IBSurgeon with any question regarding this script: support@ib-aid.com
 # This script is provided AS IS, without any warranty. 
@@ -85,11 +85,26 @@ append_str_to_sysctl(){
 
 append_str_to_sysctl "vm.max_map_count = $MAX_MAP_COUNT"
 
-apt update
-apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu74 openjdk-8-jre
-ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
-ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
-locale-gen "en_US.UTF-8"
+dnf update -y
+dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm  -y
+dnf update -y
+dnf install -y tar wget mc ncurses-compat-libs libicu libtommath
+ln -s libtommath.so.1 /lib64/libtommath.so.0
+
+echo Installing Adoptium Java 8 ===============================================
+
+cat <<EOF > /etc/yum.repos.d/adoptium.repo
+[Adoptium]
+name=Adoptium
+baseurl=https://packages.adoptium.net/artifactory/rpm/centos/10/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.adoptium.net/artifactory/api/gpg/key/public
+EOF
+
+dnf update -y
+dnf install -y temurin-8-jre
+chcon -t bin_t /usr/lib/jvm/temurin-8-jre/bin/java
 
 ## Firebird & Hqbird download
 download_file $FTP_URL/$FB_VER/fb.tar.xz $TMP_DIR "FB installer"
@@ -207,6 +222,20 @@ service firebird stop
 systemctl enable $svc_list
 systemctl restart $svc_list
 sleep 10
+
+echo Modifying firewall ports  ==================================================
+
+firewall-cmd --permanent --zone=public --add-port=8082/tcp  # 1) admin console
+firewall-cmd --permanent --zone=public --add-port=8083/tcp  # 2) trace monitoring
+firewall-cmd --permanent --zone=public --add-port=8721/tcp  # 3) internal ftp server
+firewall-cmd --permanent --zone=public --add-port=3050/tcp  # 4) FB RemoteServicePort
+firewall-cmd --permanent --zone=public --add-port=40000/tcp # 5) internal ftp server additional port
+firewall-cmd --reload
+
+echo Finally restarting services ===============================================
+systemctl restart $svc_list
+sleep 10
 service firebird start
 
 exit_script 0
+

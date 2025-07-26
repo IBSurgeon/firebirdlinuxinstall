@@ -7,12 +7,10 @@
 FB_VER=4.0
 FTP_URL="https://cc.ib-aid.com/download/distr"
 
-SYSCTL=/etc/sysctl.conf
-SYS_STR="vm.max_map_count"
-
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 ENOUGH_MEM=7168000
+MAX_MAP_COUNT=1000000
 
 download_file(){
     url=$1
@@ -61,12 +59,19 @@ exit_script(){
 	fi
 }
 
-if grep -q $SYS_STR $SYSCTL; then
-	echo "Parameter $SYS_STR already set in $SYSCTL"
-else
-	echo "$SYS_STR = 256000" >> $SYSCTL
+append_str_to_sysctl(){
+    SYSCTL=/etc/sysctl.conf
+    str=$1
+    param=$(echo "$str" | sed -E 's/^\s*([^[:space:]]+)\s*=.*$/\1/')
+    if grep -q $param $SYSCTL; then
+	echo "Parameter $param already set in $SYSCTL"
+    else
+	echo $str >> $SYSCTL
 	sysctl -p
-fi
+    fi
+}
+
+append_str_to_sysctl "vm.max_map_count = $MAX_MAP_COUNT"
 
 zypper -n update
 zypper -n install wget libtommath1 libicu73_2 lsof tar mc java-1_8_0-openjdk
@@ -120,6 +125,8 @@ fi
 echo "Running HQbird setup"
 sh /opt/hqbird/hqbird-setup
 rm -f /opt/firebird/plugins/libfbtrace2db.so 2 > /dev/null
+rm -f /opt/firebird/plugins/libreplconf.so 2 > /dev/null
+rm -f /opt/firebird/bin/replconf.properties 2 > /dev/null
 
 echo Registering HQbird ========================================================
 

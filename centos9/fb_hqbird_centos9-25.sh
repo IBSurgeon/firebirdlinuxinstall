@@ -7,12 +7,10 @@
 FB_VER=2.5
 FTP_URL="https://cc.ib-aid.com/download/distr"
 
-SYSCTL=/etc/sysctl.conf
-SYS_STR="vm.max_map_count"
-
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
 ENOUGH_MEM=7168000
+MAX_MAP_COUNT=1000000
 
 MOD_SCRIPT=$TMP_DIR/fb/scripts/postinstall.sh
 #------------------------------------------------------------------------
@@ -73,12 +71,19 @@ exit_script(){
 	fi
 }
 
-if grep -q $SYS_STR $SYSCTL; then
-	echo "Parameter $SYS_STR already set in $SYSCTL"
-else
-	echo "$SYS_STR = 256000" >> $SYSCTL
+append_str_to_sysctl(){
+    SYSCTL=/etc/sysctl.conf
+    str=$1
+    param=$(echo "$str" | sed -E 's/^\s*([^[:space:]]+)\s*=.*$/\1/')
+    if grep -q $param $SYSCTL; then
+	echo "Parameter $param already set in $SYSCTL"
+    else
+	echo $str >> $SYSCTL
 	sysctl -p
-fi
+    fi
+}
+
+append_str_to_sysctl "vm.max_map_count = $MAX_MAP_COUNT"
 
 dnf update -y
 dnf install -y epel-release
