@@ -21,16 +21,19 @@ Do you need script for some specific distro? Contact IBSurgeon support@iv-aid.co
 * make it executable
 * run it
 
-### Example for Ubuntu 22, Firebird 2.5 HQbird
+### Example for Firebird 5.0 HQbird (for all supported Linux versions)
 ```
-sudo wget https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/main/ubuntu22/fb_hqbird_ub22-25.sh
-sudo chmod +x fb_hqbird_ub22-25.sh
-sudo ./fb_hqbird_ub22-25.sh
+sudo wget https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/refs/heads/main/fb_hqbird-50.sh
+sudo chmod +x fb_hqbird-50.sh
+sudo ./fb_hqbird-50.sh
 ```
 
-### Example for CentOS7, Firebird 3.0 vanilla
+### Example for Firebird 3.0 vanilla  (for all supported Linux versions)
 ```
-sudo wget https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/main/centos7/fb_vanilla_centos7-30.sh
-sudo chmod +x fb_vanilla_centos7-30.sh
-sudo ./fb_vanilla_centos7-30.sh
+sudo wget https://raw.githubusercontent.com/IBSurgeon/firebirdlinuxinstall/refs/heads/main/fb_vanilla-30.sh
+sudo chmod +x fb_vanilla-30.sh
+sudo ./fb_vanilla-30.sh
 ```
+
+## Where are old versions?
+They are in old_version folder https://github.com/IBSurgeon/firebirdlinuxinstall/tree/main/old_version
