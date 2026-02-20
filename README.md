@@ -1,10 +1,10 @@
-# Firebird Linux Installation Scripts (major upgrade October 28, 2025)
+# Firebird Linux Installation Scripts (update 20-FEB-2026)
 
 1-step installations scripts to install Firebird 5, 4, 3, 2.5 (vanilla or HQbird) for all popular Linux distros with OS optimizations
 
 ## Currently supported on the following distros:
-AlmaLinux 10, AlmaLinux 9, CentOS 10, CentOS 7, CentOS 8, CentOS 9, Debian 11, Debian 12, openSUSE 15, Oracle Linux 10, Oracle Linux 8, Oracle Linux 9, Rocky Linux 10, Rocky Linux 8, Rocky Linux 9, Ubuntu 20, Ubuntu 22, Ubuntu 24.
-
+AlmaLinux 10, AlmaLinux 9, Astra Linux SE 1.7, Astra Linux SE 1.8, CentOS 10, CentOS 7, CentOS 8, CentOS 9, Debian 11, Debian 12, openSUSE 15, Oracle Linux 10, Oracle Linux 8, Oracle Linux 9, Red OS 7, Red OS, Rocky Linux 10, Rocky Linux 8, Rocky Linux 9, Ubuntu 20, Ubuntu 22, Ubuntu 24.
+ 
 Do you need script for some specific distro? Contact IBSurgeon support@iv-aid.com.
 
 ## What these scripts do:
