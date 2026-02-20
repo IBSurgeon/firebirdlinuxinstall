@@ -66,11 +66,12 @@ downloadFile(){
            * ) exitScript 1 "HTTP error ($m)";;
     esac
     case $r in
-       0) echo "OK";;
-      23) exitScript $r "Write error";;
-      67) exitScript $r "Wrong login / password";;
-      78) exitScript $r "File $url does not exist on server";;
-       *) exitScript $r "Error downloading file ($r)";;
+	0) echo "OK";;
+	23) exitScript $r "Write error";;
+	56) exitScript $r " Recv failure: Connection reset by peer";;
+	67) exitScript $r "Wrong login / password";;
+	78) exitScript $r "File $url does not exist on server";;
+	*) exitScript $r "Error downloading file ($r)";;
     esac
 }
 
@@ -110,7 +111,7 @@ append_str_to_sysctl(){
 }
 
 configureCentosFW(){
-	if [[ "$(firewall-cmd --state)" -eq "running" ]]; then
+	if systemctl is-active --quiet firewalld; then
 		ports=$1
 		IFS=',' read -ra port_array <<< "$ports"
 		for p in "${port_array[@]}"; do
@@ -127,6 +128,7 @@ configureCentosFW(){
 		done
 		echo "Reloading firewall..."
 		firewall-cmd --reload
+	else echo "Firewall is not active, skipping..."
 	fi
 }
 
@@ -153,10 +155,81 @@ enabled=1
 gpgcheck=1
 gpgkey=https://packages.adoptium.net/artifactory/api/gpg/key/public
 EOF
+
 	dnf update -y || exitScript 1 "Error updating OS"
 	dnf install -y temurin-8-jre || exitScript 1 "Error installing Java"
 	chcon -t bin_t /usr/lib/jvm/temurin-8-jre/bin/java
 	configureCentosFW 8082,8083,8721,3050,40000
+}
+
+checkLine(){
+	repo=$1
+	list=$2
+	add=$3
+	ESCAPED_STRING=$(echo "$repo" | sed 's/[^^]/[&]/g; s/\^/\\^/g')
+	# Check if uncommented line exist
+	if grep -q "^[[:space:]]*${ESCAPED_STRING}$" "$list"; then
+		echo "Repo \"$repo\" found in $list"
+	# Check if commented line exist
+	elif grep -q "^[[:space:]]*#[[:space:]]*${ESCAPED_STRING}$" "$list"; then
+		echo "Found commented line for repo \"$repo\", uncommenting..."
+		sed -i -E "s/^([[:space:]]*)#([[:space:]]*${ESCAPED_STRING})$/\1\2/" "$list"
+	# Line not found, append
+	elif [ $add -ne 0 ]; then
+		echo "Repo \"$repo\" not found in $list, appending..."
+		echo "$repo" >> "$list"
+	fi
+}
+
+checkRepo(){
+	repo=$1
+	list=$2
+	if [ -z "${2+set}" ]; then
+		found=0
+		for f in /etc/apt/sources.list.d/*.list; do
+			if [[ -f "$f" ]]; then
+				checkLine "$repo" "$f" 0
+			fi
+		done
+		checkLine "$repo" /etc/apt/sources.list 1
+	else
+		if [ -f $list ]; then
+			echo "File $list exists, checking repo..."
+			checkLine "$repo" "$list" 1
+		else
+			echo "File $list does not exist, creating and adding repo..."
+			echo "$repo" | tee -a "$list"
+		fi
+	fi
+}
+
+prepareAstra1_7(){
+	checkRepo "deb https://download.astralinux.ru/astra/stable/1.7_x86-64/repository-base/ 1.7_x86-64 main contrib non-free"
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y net-tools libtommath1 libicu63 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg java-common || exitScript 1 "Error installing software"
+
+	checkRepo "deb http://packages.lab50.net/gosjava/8 alse17 main" /etc/apt/sources.list.d/gosjava.list
+	wget -qO - http://packages.lab50.net/lab50.asc | sudo apt-key add -
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y gosjava8-free || exitScript 1 "Error installing software"
+
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	locale-gen "en_US.UTF-8"
+}
+
+prepareAstra1_8(){
+	checkRepo "deb https://download.astralinux.ru/astra/stable/1.8_x86-64/repository-main/ 1.8_x86-64 main contrib non-free non-free-firmware"
+	checkRepo "deb https://download.astralinux.ru/astra/stable/1.8_x86-64/repository-extended/ 1.8_x86-64 main contrib non-free non-free-firmware"
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y net-tools libtommath1 libicu72 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg java-common || exitScript 1 "Error installing software"
+
+	checkRepo "deb http://packages.lab50.net/gosjava/8 alse18 main" /etc/apt/sources.list.d/gosjava.list
+	wget -qO - http://packages.lab50.net/lab50.asc | sudo apt-key add -
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y gosjava8-free || exitScript 1 "Error installing software"
+
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	locale-gen "en_US.UTF-8"
 }
 
 prepareCentos7(){
@@ -274,11 +347,25 @@ EOF
 	configureCentosFW 8082,8083,8721,3050,40000
 }
 
+prepareRedOS7(){
+	dnf update -y || exitScript 1 "Error updating OS"
+	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc java-1.8.0-openjdk || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /lib64/libtommath.so.0
+}
+
+prepareRedOS8(){
+	dnf update -y || exitScript 1 "Error updating OS"
+	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc java-1.8.0-openjdk || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	configureCentosFW 8082,8083,8721,3050,40000	
+}
+
+
 prepareRocky8(){
 	dnf -y update || exitScript 1 "Error updating OS"
 	dnf -y install epel-release
-	dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs
-	dnf -y install java-1.8.0-openjdk-headless
+	dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs || exitScript 1 "Error installing software"
+	dnf -y install java-1.8.0-openjdk-headless || exitScript 1 "Error installing Java"
 	ln -s libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 8082,8083,8721,3050,40000
 }
@@ -286,8 +373,8 @@ prepareRocky8(){
 prepareRocky9(){
 	dnf -y update || exitScript 1 "Error updating OS"
 	dnf -y install epel-release
-	dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs tar
-	dnf -y install java-1.8.0-openjdk-headless
+	dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs tar || exitScript 1 "Error installing software"
+	dnf -y install java-1.8.0-openjdk-headless || exitScript 1 "Error installing Java"
 	ln -s libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 8082,8083,8721,3050,40000	
 }
@@ -295,7 +382,7 @@ prepareRocky9(){
 prepareRocky10(){
 	dnf update -y || exitScript 1 "Error updating OS"
 	dnf install -y epel-release
-	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc 
+	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc  || exitScript 1 "Error installing software"
 	ln -s libtommath.so.1 /lib64/libtommath.so.0
 
 	echo Installing Adoptium Java 8 ===============================================
@@ -309,7 +396,7 @@ gpgkey=https://packages.adoptium.net/artifactory/api/gpg/key/public
 EOF
 
 	dnf update -y || exitScript 1 "Error updating OS"
-	dnf install -y temurin-8-jre
+	dnf install -y temurin-8-jre || exitScript 1 "Error installing Java"
 	chcon -t bin_t /usr/lib/jvm/temurin-8-jre/bin/java
 	configureCentosFW 8082,8083,8721,3050,40000
 }
@@ -347,6 +434,13 @@ prepareOS(){
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Alma Linux is not supported";;
 			esac
 			;;
+		astra)
+			case $DISTRO_VERSION in
+				1.7_x86-64) prepareAstra1_7;;
+				1.8_x86-64) prepareAstra1_8;;
+				*) exitScript 1 "This version ($DISTRO_VERSION) of ($DISTRO_PRETTY_NAME) is not supported";;
+			esac
+			;;
 		centos)
 			case $DISTRO_VERSION in
 				7) prepareCentos7;;
@@ -371,17 +465,24 @@ prepareOS(){
 			;;
 		ol)
 			case $DISTRO_VERSION in
-				8.10) prepareOracle8;;
-				9.6) prepareOracle9;;
-				10.0) prepareOracle10;;
+				8.*) prepareOracle8;;
+				9.*) prepareOracle9;;
+				10.*) prepareOracle10;;
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Oracle Linux is not supported";;
+			esac
+			;;
+		redos)
+			case $DISTRO_VERSION in
+				7.*) prepareRedOS7;;
+				8.*) prepareRedOS8;;
+				*) exitScript 1 "This version ($DISTRO_VERSION) of RedOS Linux is not supported";;
 			esac
 			;;
 		rocky)
 			case $DISTRO_VERSION in
-				8.0) prepareRocky8;;
-				9.0) prepareRocky9;;
-				10.0) prepareRocky10;;
+				8.*) prepareRocky8;;
+				9.*) prepareRocky9;;
+				10.*) prepareRocky10;;
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Rocky Linux is not supported";;
 			esac
 			;;

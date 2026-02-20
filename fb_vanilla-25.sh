@@ -146,6 +146,23 @@ prepareAlma10(){
 	configureCentosFW 3050
 }
 
+prepareAstra1_7(){
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y net-tools libtommath1 libicu63 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	locale-gen "en_US.UTF-8"
+}
+
+prepareAstra1_8(){
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y net-tools libtommath1 libicu72 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg  || exitScript 1 "Error installing software"
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	locale-gen "en_US.UTF-8"
+}
+
+
 prepareCentos7(){
 	yum update -y || exitScript 1 "Error updating OS"
 	yum install -y epel-release || exitScript 1 "Error installing software"
@@ -196,7 +213,7 @@ prepareSuse15(){
 	zypper -n update
 	zypper -n install insserv sysvinit-tools wget libtommath1 libicu73_2 lsof tar mc || exitScript 1 "Error installing software"
 	ln -s libtommath.so.1 /usr/lib64/libtommath.so.0
-	configureCentosFW 8082,8083,8721,3050,40000
+	configureCentosFW 3050
 }
 
 prepareOracle8(){
@@ -204,7 +221,7 @@ prepareOracle8(){
 	dnf install -y oracle-epel-release-el8 || exitScript 1 "Error installing software"
 	dnf install -y tar wget mc ncurses-compat-libs libicu libtommath  || exitScript 1 "Error installing software"
 	ln -s libtommath.so.1 /lib64/libtommath.so.0
-	configureCentosFW 8082,8083,8721,3050,40000
+	configureCentosFW 3050
 }
 
 prepareOracle9(){
@@ -214,7 +231,7 @@ prepareOracle9(){
 	dnf update -y
 	dnf install -y tar wget mc ncurses-compat-libs libicu libtommath  || exitScript 1 "Error installing software"
 	ln -s libtommath.so.1 /lib64/libtommath.so.0
-	configureCentosFW 8082,8083,8721,3050,40000
+	configureCentosFW 3050
 }
 
 prepareOracle10(){
@@ -232,6 +249,19 @@ prepareRocky8(){
 	dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs || exitScript 1 "Error installing software"
 	ln -s libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050
+}
+
+prepareRedOS7(){
+	dnf update -y || exitScript 1 "Error updating OS"
+	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /lib64/libtommath.so.0
+}
+
+prepareRedOS8(){
+	dnf update -y || exitScript 1 "Error updating OS"
+	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	configureCentosFW 3050	
 }
 
 prepareRocky9(){
@@ -278,9 +308,16 @@ prepareOS(){
 	case $DISTRO_NAME in
 		almalinux)
 			case $DISTRO_VERSION in
-				9.0) prepareAlma9;;
-				10.0) prepareAlma10;;
+				9.*) prepareAlma9;;
+				10.*) prepareAlma10;;
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Alma Linux is not supported";;
+			esac
+			;;
+		astra)
+			case $DISTRO_VERSION in
+				1.7_x86-64) prepareAstra1_7;;
+				1.8_x86-64) prepareAstra1_8;;
+				*) exitScript 1 "This version ($DISTRO_VERSION) of ($DISTRO_PRETTY_NAME) is not supported";;
 			esac
 			;;
 		centos)
@@ -307,17 +344,24 @@ prepareOS(){
 			;;
 		ol)
 			case $DISTRO_VERSION in
-				8.10) prepareOracle8;;
-				9.6) prepareOracle9;;
-				10.0) prepareOracle10;;
+				8.*) prepareOracle8;;
+				9.*) prepareOracle9;;
+				10.*) prepareOracle10;;
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Oracle Linux is not supported";;
+			esac
+			;;
+		redos)
+			case $DISTRO_VERSION in
+				7.*) prepareRedOS7;;
+				8.*) prepareRedOS8;;
+				*) exitScript 1 "This version ($DISTRO_VERSION) of RedOS Linux is not supported";;
 			esac
 			;;
 		rocky)
 			case $DISTRO_VERSION in
-				8.0) prepareRocky8;;
-				9.0) prepareRocky9;;
-				10.0) prepareRocky10;;
+				8.*) prepareRocky8;;
+				9.*) prepareRocky9;;
+				10.*) prepareRocky10;;
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Rocky Linux is not supported";;
 			esac
 			;;
