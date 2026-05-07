@@ -5,8 +5,8 @@
 # This script is licensed under IDPL https://firebirdsql.org/en/initial-developer-s-public-license-version-1-0/
 
 FB_VER=3.0
-FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/v3.0.13/Firebird-3.0.13.33818-0.amd64.tar.gz"
-DBG_URL="https://github.com/FirebirdSQL/firebird/releases/download/v3.0.13/Firebird-debuginfo-3.0.13.33818-0.amd64.tar.gz"
+FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/v3.0.14/Firebird-3.0.14.33856-0.amd64.tar.gz"
+DBG_URL="https://github.com/FirebirdSQL/firebird/releases/download/v3.0.14/Firebird-debuginfo-3.0.14.33856-0.amd64.tar.gz"
 FTP_URL="https://cc.ib-aid.com/download/distr"
 
 CRYPT_ARC=CryptPlugin-FB_30_LINUX_64bit.tar.xz
@@ -226,6 +226,13 @@ prepareDebian12(){
 	locale-gen "en_US.UTF-8"
 }
 
+prepareDebian13(){
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y net-tools libtommath1 libicu76 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	locale-gen "en_US.UTF-8"
+}
+
 prepareSuse15(){
 	zypper -n update
 	zypper -n install insserv sysvinit-tools wget libtommath1 libicu73_2 lsof tar mc
@@ -319,6 +326,14 @@ prepareUbuntu24(){
 	locale-gen "en_US.UTF-8"
 }
 
+prepareUbuntu26(){
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu78 bsdmainutils || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	locale-gen "en_US.UTF-8"
+}
+
 prepareOS(){
 	echo "Distro: $DISTRO_PRETTY_NAME"
 	echo "ID/Version: $DISTRO_NAME/$DISTRO_VERSION"
@@ -350,6 +365,7 @@ prepareOS(){
 			case $DISTRO_VERSION in
 				11) prepareDebian11;;
 				12) prepareDebian12;;
+				13) prepareDebian13;;
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Debian Linux is not supported";;
 			esac
 			;;
@@ -384,9 +400,10 @@ prepareOS(){
 			;;
 		ubuntu)
 			case $DISTRO_VERSION in
-				20.04)	prepareUbuntu20;;
-				22.04)	prepareUbuntu22;;
-				24.04)	prepareUbuntu24;;
+				20.*)	prepareUbuntu20;;
+				22.*)	prepareUbuntu22;;
+				24.*)	prepareUbuntu24;;
+				26.*)	prepareUbuntu26;;
 				*)	echo "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
 			esac
 			;;

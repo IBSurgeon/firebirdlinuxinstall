@@ -198,6 +198,7 @@ prepareCentos10(){
 prepareDebian11(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu67 wget unzip gettext libncurses5 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
@@ -205,6 +206,15 @@ prepareDebian11(){
 prepareDebian12(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu72 wget unzip gettext libncurses5 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	locale-gen "en_US.UTF-8"
+}
+
+prepareDebian13(){
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y net-tools libtommath1 libicu76 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
@@ -302,6 +312,14 @@ prepareUbuntu24(){
 	locale-gen "en_US.UTF-8"
 }
 
+prepareUbuntu26(){
+	apt update || exitScript 1 "Error updating OS"
+	apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu78 bsdmainutils || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	locale-gen "en_US.UTF-8"
+}
+
 prepareOS(){
 	echo "Distro: $DISTRO_PRETTY_NAME"
 	echo "ID/Version: $DISTRO_NAME/$DISTRO_VERSION"
@@ -333,6 +351,7 @@ prepareOS(){
 			case $DISTRO_VERSION in
 				11) prepareDebian11;;
 				12) prepareDebian12;;
+				13) prepareDebian13;;
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Debian Linux is not supported";;
 			esac
 			;;
@@ -367,9 +386,10 @@ prepareOS(){
 			;;
 		ubuntu)
 			case $DISTRO_VERSION in
-				20.04)	prepareUbuntu20;;
-				22.04)	prepareUbuntu22;;
-				24.04)	prepareUbuntu24;;
+				20.*)	prepareUbuntu20;;
+				22.*)	prepareUbuntu22;;
+				24.*)	prepareUbuntu24;;
+				26.*)	prepareUbuntu26;;
 				*)	echo "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
 			esac
 			;;
@@ -395,7 +415,7 @@ installFB(){
 
 	echo Running FB installer =====================================================
 
-	if [ -e $SYSTEMD_DIR/$PROC_SKT_CTRL -a -e $SYSTEMD_DIR/$PROC_SVC_CTRL -a -e $SYSTEMD_DIR/$THRD_SVC_CTRL ]; then
+	if [ -f $SYSTEMD_DIR/$PROC_SKT_CTRL -a -f $SYSTEMD_DIR/$PROC_SVC_CTRL -a -f $SYSTEMD_DIR/$THRD_SVC_CTRL ]; then
 		echo "All systemd control files found."
 	else
 		echo "One or more systemd control files not found. Copying to $SYSTEMD_DIR"
