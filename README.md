@@ -1,4 +1,4 @@
-# Firebird Linux Installation Scripts (update 20-FEB-2026)
+# Firebird Linux Installation Scripts (update 07-MAY-2026)
 
 1-step installations scripts to install Firebird 5, 4, 3, 2.5 (vanilla or HQbird) for all popular Linux distros with OS optimizations
 
