@@ -5,7 +5,7 @@
 ## Currently supported on the following distros:
 AlmaLinux 10, AlmaLinux 9, Astra Linux SE 1.7, Astra Linux SE 1.8, CentOS 10, CentOS 7, CentOS 8, CentOS 9, Debian 11, Debian 12, Debian 13, openSUSE 15, Oracle Linux 10, Oracle Linux 8, Oracle Linux 9, Red OS 7, Red OS, Rocky Linux 10, Rocky Linux 8, Rocky Linux 9, Ubuntu 20, Ubuntu 22, Ubuntu 24, Ubuntu 26.
  
-Do you need script for some specific distro? Contact IBSurgeon support@iv-aid.com.
+Do you need script for some specific distro? Contact IBSurgeon support@ib-aid.com.
 
 ## What these scripts do:
 * Download and install prerequisites libraries and packages
