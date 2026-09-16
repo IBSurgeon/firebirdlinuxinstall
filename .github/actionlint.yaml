@@ -1,0 +1,5 @@
+# actionlint's bundled runner-label data does not know newer
+# GitHub-hosted labels yet; ubuntu-26.04 is a valid hosted label.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

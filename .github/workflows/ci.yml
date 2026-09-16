@@ -1,0 +1,143 @@
+name: CI
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'fb_*.sh'
+      - 'ci/**'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'fb_*.sh'
+      - 'ci/**'
+      - '.github/workflows/**'
+  schedule:
+    # Weekly: catch upstream changes (new Firebird releases, updated
+    # config archives on cc.ib-aid.com, runner image updates).
+    - cron: '0 5 * * 1'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Lint workflow files (actionlint)
+        run: docker run --rm --volume "$PWD:/repo" --workdir /repo rhysd/actionlint:latest
+
+      - name: Check shell scripts
+        run: |
+          command -v shellcheck >/dev/null || sudo apt-get install -y shellcheck
+          shellcheck --version
+          # Gate on errors only (syntax and likely breakage); the install
+          # scripts still have warning-level findings (unused variables,
+          # unquoted arguments, ...) to be cleaned up gradually.
+          shellcheck --severity=error fb_*.sh ci/*.sh
+          echo "::group::shellcheck report (warning level, non-blocking)"
+          shellcheck --severity=warning fb_*.sh ci/*.sh || true
+          echo "::endgroup::"
+
+  install-ubuntu:
+    name: ${{ matrix.script.file }} @ ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # ubuntu-latest currently points to 24.04; ubuntu-26.04 is the
+        # newest distro the scripts support. script is an object so that
+        # both runners cross-multiply with every script (include-based
+        # entries would silently overwrite each other instead).
+        os: [ubuntu-26.04, ubuntu-latest]
+        script:
+          - file: fb_vanilla-25.sh
+            service: firebird       # Classic, switched to thread mode
+          - file: fb_vanilla-30.sh
+            service: firebird-superserver
+          - file: fb_vanilla-40.sh
+            service: firebird
+          - file: fb_vanilla-50.sh
+            service: firebird
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: OS info
+        run: grep -E '^(PRETTY_NAME|VERSION_ID)' /etc/os-release
+
+      # Scripts are stored without the executable bit (mode 100644), and
+      # with no arguments they wait for Enter at the start - redirecting
+      # /dev/null to stdin makes that prompt fall through to its default.
+      - name: Install Firebird (${{ matrix.script.file }})
+        run: sudo bash ${{ matrix.script.file }} < /dev/null
+
+      - name: Verify installation
+        run: bash ci/verify-install.sh ${{ matrix.script.service }}
+
+  install-debian:
+    name: ${{ matrix.script }} @ debian-13 (container)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - script: fb_vanilla-25.sh
+            service: firebird
+          - script: fb_vanilla-30.sh
+            service: firebird-superserver
+          - script: fb_vanilla-40.sh
+            service: firebird
+          - script: fb_vanilla-50.sh
+            service: firebird
+    steps:
+      - uses: actions/checkout@v5
+
+      # No Debian runner exists, so boot systemd inside a privileged
+      # container and drive the install script through docker exec.
+      - name: Start Debian 13 container with systemd
+        run: |
+          docker run --detach --privileged --cgroupns=host \
+            --volume /sys/fs/cgroup:/sys/fs/cgroup:rw \
+            --name deb13 jrei/systemd-debian:13
+          for i in $(seq 1 60); do
+            state=$(docker exec deb13 systemctl is-system-running 2>/dev/null || true)
+            echo "[$i] systemd: ${state:-starting}"
+            if [ "$state" = "running" ] || [ "$state" = "degraded" ]; then
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "::error::systemd did not reach a running state"
+          docker logs deb13 || true
+          exit 1
+
+      - name: Bootstrap container
+        # The slim image ships without CA certificates (curl downloads
+        # would fail) and without procps (Firebird's install.sh needs ps).
+        run: >
+          docker exec deb13 bash -c
+          "apt-get update -qq && apt-get install -y -qq ca-certificates procps >/dev/null"
+
+      - name: Install Firebird (${{ matrix.script }})
+        # Copy to /root, not /tmp: on Debian 13 systemd mounts /tmp as a
+        # tmpfs, and docker cp writes to the image layer underneath the
+        # mount - exit 0, but the file is invisible inside the container.
+        run: |
+          docker cp ${{ matrix.script }} deb13:/root/install.sh
+          docker exec -i deb13 bash /root/install.sh < /dev/null
+
+      - name: Verify installation
+        run: |
+          docker cp ci/verify-install.sh deb13:/root/verify-install.sh
+          docker exec deb13 bash /root/verify-install.sh ${{ matrix.service }}

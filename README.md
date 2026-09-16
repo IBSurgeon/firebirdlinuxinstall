@@ -37,3 +37,15 @@ sudo ./fb_vanilla-30.sh
 
 ## Where are old versions?
 They are in old_version folder https://github.com/IBSurgeon/firebirdlinuxinstall/tree/main/old_version
+
+## Continuous Integration
+
+GitHub Actions (`.github/workflows/ci.yml`) tests the vanilla installation scripts on every push and weekly on a schedule:
+
+* **shellcheck** — every `fb_*.sh` and `ci/*.sh` script; fails on error-level findings, reports warnings non-blocking
+* **Ubuntu** — all 4 scripts on `ubuntu-26.04` (latest supported distro) and `ubuntu-latest` (currently 24.04) runners
+* **Debian 13** — all 4 scripts inside a privileged `jrei/systemd-debian:13` container with systemd (no Debian runners exist)
+
+Each install job runs the script unattended and then verifies: Firebird systemd service is active, port 3050 accepts connections, and `isql` can create, query and drop a database over TCP (SYSDBA/masterkey).
+
+HQbird scripts are not tested in CI automatically: they download proprietary archives and register against the HQbird licensing server, so they are intended for a manually-triggered workflow.
