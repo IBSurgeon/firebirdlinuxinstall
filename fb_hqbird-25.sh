@@ -309,7 +309,8 @@ prepareDebian13(){
 	echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
 	apt update || exitScript 1 "Error updating OS"
 	apt install -y temurin-8-jre || exitScript 1 "Error installing Java"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 	locale-gen "en_US.UTF-8"
 }
 

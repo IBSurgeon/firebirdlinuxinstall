@@ -228,7 +228,8 @@ prepareDebian12(){
 prepareDebian13(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu76 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 	locale-gen "en_US.UTF-8"
 }
 
