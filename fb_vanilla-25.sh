@@ -7,6 +7,7 @@
 FB_VER=2.5
 FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/FirebirdCS-2.5.9.27139-0.amd64.tar.gz"
 FTP_URL="https://cc.ib-aid.com/download/distr"
+FB_ROOT=/opt/firebird
 
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
@@ -432,12 +433,12 @@ installFB(){
 	cd $TMP_DIR/fb
 
 	yes "masterkey" | ./install.sh
-	cp $TMP_DIR/systemd-files/changeSystemdMode.sh /opt/firebird/bin/
+	cp $TMP_DIR/systemd-files/changeSystemdMode.sh $FB_ROOT/bin/
 
 	cd $OLD_DIR
-	cp -rf $TMP_DIR/conf/*.conf /opt/firebird
-	/opt/firebird/bin/changeSystemdMode.sh thread
-	chown -R firebird:firebird /opt/firebird/examples/empbuild
+	cp -rf $TMP_DIR/conf/*.conf $FB_ROOT
+	$FB_ROOT/bin/changeSystemdMode.sh thread
+	chown -R firebird:firebird $FB_ROOT/examples/empbuild
 }
 
 startServices(){
