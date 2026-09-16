@@ -1,5 +1,8 @@
 name: CI
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -43,23 +46,25 @@ jobs:
           echo "::endgroup::"
 
   install-ubuntu:
-    name: ${{ matrix.script }} @ ${{ matrix.os }}
+    name: ${{ matrix.script.file }} @ ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
         # ubuntu-latest currently points to 24.04; ubuntu-26.04 is the
-        # newest distro the scripts support.
+        # newest distro the scripts support. script is an object so that
+        # both runners cross-multiply with every script (include-based
+        # entries would silently overwrite each other instead).
         os: [ubuntu-26.04, ubuntu-latest]
-        include:
-          - script: fb_vanilla-25.sh
-            service: firebird           # Classic, switched to thread mode
-          - script: fb_vanilla-30.sh
+        script:
+          - file: fb_vanilla-25.sh
+            service: firebird       # Classic, switched to thread mode
+          - file: fb_vanilla-30.sh
             service: firebird-superserver
-          - script: fb_vanilla-40.sh
+          - file: fb_vanilla-40.sh
             service: firebird
-          - script: fb_vanilla-50.sh
+          - file: fb_vanilla-50.sh
             service: firebird
     steps:
       - uses: actions/checkout@v5
@@ -70,11 +75,11 @@ jobs:
       # Scripts are stored without the executable bit (mode 100644), and
       # with no arguments they wait for Enter at the start - redirecting
       # /dev/null to stdin makes that prompt fall through to its default.
-      - name: Install Firebird (${{ matrix.script }})
-        run: sudo bash ${{ matrix.script }} < /dev/null
+      - name: Install Firebird (${{ matrix.script.file }})
+        run: sudo bash ${{ matrix.script.file }} < /dev/null
 
       - name: Verify installation
-        run: bash ci/verify-install.sh ${{ matrix.service }}
+        run: bash ci/verify-install.sh ${{ matrix.script.service }}
 
   install-debian:
     name: ${{ matrix.script }} @ debian-13 (container)
@@ -122,11 +127,14 @@ jobs:
           "apt-get update -qq && apt-get install -y -qq ca-certificates procps >/dev/null"
 
       - name: Install Firebird (${{ matrix.script }})
+        # Copy to /root, not /tmp: on Debian 13 systemd mounts /tmp as a
+        # tmpfs, and docker cp writes to the image layer underneath the
+        # mount - exit 0, but the file is invisible inside the container.
         run: |
-          docker cp ${{ matrix.script }} deb13:/tmp/install.sh
-          docker exec -i deb13 bash /tmp/install.sh < /dev/null
+          docker cp ${{ matrix.script }} deb13:/root/install.sh
+          docker exec -i deb13 bash /root/install.sh < /dev/null
 
       - name: Verify installation
         run: |
-          docker cp ci/verify-install.sh deb13:/tmp/verify-install.sh
-          docker exec deb13 bash /tmp/verify-install.sh ${{ matrix.service }}
+          docker cp ci/verify-install.sh deb13:/root/verify-install.sh
+          docker exec deb13 bash /root/verify-install.sh ${{ matrix.service }}
