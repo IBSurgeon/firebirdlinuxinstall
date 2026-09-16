@@ -432,8 +432,8 @@ installFB(){
 	cd $TMP_DIR/fb
 	yes 'masterkey' | ./install.sh
 	cd $OLD_DIR
-	cp -rf $TMP_DIR/conf/*.conf /opt/firebird
-	chown -R firebird:firebird /opt/firebird/examples/empbuild
+	cp -rf $TMP_DIR/conf/*.conf $FB_ROOT
+	chown -R firebird:firebird $FB_ROOT/examples/empbuild
 }
 
 installCryptPlugin(){
@@ -493,7 +493,7 @@ while [[ "$#" -gt 0 ]]; do
         case "$1" in
 		"--debug"	) DEBUG=1; shift ;;
 		"--crypt"	) CRYPT=1; shift;;
-		"--crypt-only"	) CRYPT_ONLY=1; FB_ROOT="/opt/firebird"; shift;;
+		"--crypt-only"	) CRYPT_ONLY=1; shift;;
                 "--crypt-only="*) CRYPT_ONLY=1; FB_ROOT=$(echo "$1" | sed 's/.*=//'); shift ;;
 		"-i"|"--info"	) displayHelp; shift;;
 	esac
