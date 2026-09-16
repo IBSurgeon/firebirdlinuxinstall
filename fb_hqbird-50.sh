@@ -6,6 +6,7 @@
 
 FB_VER=5.0
 FTP_URL="https://cc.ib-aid.com/download/distr"
+FB_ROOT=/opt/firebird
 
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
@@ -540,12 +541,12 @@ installFB(){
 	cd $TMP_DIR/fb
 	yes 'masterkey' | ./install.sh
 	cd $OLD_DIR
-	cp -rf $TMP_DIR/conf/*.conf /opt/firebird
+	cp -rf $TMP_DIR/conf/*.conf $FB_ROOT
 	if [ $DBG_INFO -ne 0 ]; then
 		echo "Extracting debug info..."
-		tar xvf $TMP_DIR/dbg.tar.xz --directory=/opt/firebird/ --strip-components=3 > /dev/null || exit_script 1 "Error unpacking debug info archive"
+		tar xvf $TMP_DIR/dbg.tar.xz --directory=$FB_ROOT/ --strip-components=3 > /dev/null || exit_script 1 "Error unpacking debug info archive"
 	fi	
-	chown -R firebird:firebird /opt/firebird/examples/empbuild
+	chown -R firebird:firebird $FB_ROOT/examples/empbuild
 }
 
 installHQ(){
@@ -571,16 +572,16 @@ installHQ(){
 	mv /opt/hqbird/amv2/graphschema.json /opt/hqbird/outdataguard/mon/logs
 	echo "Running HQbird setup"
 	sh /opt/hqbird/hqbird-setup
-	rm -f /opt/firebird/plugins/libfbtrace2db.so 2 > /dev/null
+	rm -f $FB_ROOT/plugins/libfbtrace2db.so 2 > /dev/null
 	# Store info for uninstall
-	echo "/opt/firebird/" > /opt/hqbird/fb-instances.txt
+	echo "$FB_ROOT/" > /opt/hqbird/fb-instances.txt
 }
 
 registerHQ(){
 	echo Registering HQbird ========================================================
 	mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv
 	cp -R /opt/hqbird/conf/.defaults/server/* /opt/hqbird/conf/agent/servers/hqbirdsrv
-	sed -i 's#server.installation =.*#server.installation=/opt/firebird#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
+	sed -i "s#server.installation =.*#server.installation=$FB_ROOT#g" /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 	sed -i 's#server.bin.*#server.bin = ${server.installation}/bin#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 	sed -i 's#server.id = .*#server.id = hqbirdsrv#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 
@@ -597,15 +598,15 @@ registerDB(){
 
 	mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
 	cp -R /opt/hqbird/conf/.defaults/database5/* /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
-	java -jar /opt/hqbird/dataguard.jar -regdb="/opt/firebird/examples/empbuild/employee.fdb" -srvver=5 -config-directory="/opt/hqbird/conf" -default-output-directory="/opt/hqbird/outdataguard"
+	java -jar /opt/hqbird/dataguard.jar -regdb="$FB_ROOT/examples/empbuild/employee.fdb" -srvver=5 -config-directory="/opt/hqbird/conf" -default-output-directory="/opt/hqbird/outdataguard"
 	rm -rf /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
 
 	sed -i 's/db.replication_role=.*/db.replication_role=switchedoff/g' /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/*/database.properties
 	sed -i 's/job.enabled.*/job.enabled=false/g' /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/*/jobs/replmon/job.properties
-	sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' /opt/firebird/firebird.conf
+	sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' $FB_ROOT/firebird.conf
 	#sed -i 's/ftpsrv.homedir=/ftpsrv.homedir=\/opt\/database/g' /opt/hqbird/conf/ftpsrv.properties
 	sed -i 's/ftpsrv.passivePorts=40000-40005/ftpsrv.passivePorts=40000-40000/g' /opt/hqbird/conf/ftpsrv.properties
-	chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/databases.conf
+	chown -R firebird:firebird /opt/hqbird $FB_ROOT/firebird.conf $FB_ROOT/databases.conf
 }
 
 startServices(){
