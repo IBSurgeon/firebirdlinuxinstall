@@ -101,11 +101,17 @@ append_str_to_sysctl(){
     SYSCTL=/etc/sysctl.conf
     str=$1
     param=$(echo "$str" | sed -E 's/^\s*([^[:space:]]+)\s*=.*$/\1/') # '
-    if grep -q $param $SYSCTL; then
+    if [ -d /etc/sysctl.d ]; then
+        SYSCTL=/etc/sysctl.d/99-firebird.conf
+    fi
+    if grep -q "^${param}[[:space:]]*=" "$SYSCTL" 2>/dev/null; then
         echo "Parameter $param already set in $SYSCTL"
     else
-        echo $str >> $SYSCTL
-        sysctl -p
+        mkdir -p "$(dirname "$SYSCTL")"
+        echo "$str" >> "$SYSCTL"
+        if command -v sysctl >/dev/null 2>&1; then
+            sysctl --system >/dev/null 2>&1 || sysctl -p "$SYSCTL" >/dev/null 2>&1 || true
+        fi
     fi
 }
 
@@ -144,6 +150,47 @@ prepareAlma10(){
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
 	ln -s libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050
+}
+
+prepareArch(){
+	pacman -Syu --noconfirm || exitScript 1 "Error updating OS"
+	pacman -S --noconfirm wget curl tar icu lsof mc gettext unzip file xz ncurses libtommath net-tools || exitScript 1 "Error installing software"
+
+	for libsrc in /usr/lib/libtommath.so.1 /usr/lib64/libtommath.so.1 /lib/libtommath.so.1 /lib64/libtommath.so.1; do
+		if [ -f "$libsrc" ]; then
+			for libdir in /usr/lib /usr/lib64 /lib /lib64; do
+				[ -d "$libdir" ] || continue
+				ln -sfn "$libsrc" "$libdir/libtommath.so.0" 2>/dev/null || true
+			done
+			break
+		fi
+	done
+
+	for libsrc in /usr/lib/libncursesw.so.6.6 /usr/lib/libncursesw.so.6 /usr/lib64/libncursesw.so.6.6 /usr/lib64/libncursesw.so.6 /lib/libncursesw.so.6.6 /lib/libncursesw.so.6 /lib64/libncursesw.so.6.6 /lib64/libncursesw.so.6; do
+		if [ -f "$libsrc" ]; then
+			for libdir in /usr/lib /usr/lib64 /lib /lib64; do
+				[ -d "$libdir" ] || continue
+				ln -sfn "$libsrc" "$libdir/libncurses.so.5" 2>/dev/null || true
+			done
+			break
+		fi
+	done
+
+	for libsrc in /usr/lib/libtinfo.so.6 /usr/lib/libtinfo.so /usr/lib64/libtinfo.so.6 /usr/lib64/libtinfo.so /lib/libtinfo.so.6 /lib/libtinfo.so /lib64/libtinfo.so.6 /lib64/libtinfo.so; do
+		if [ -f "$libsrc" ]; then
+			for libdir in /usr/lib /usr/lib64 /lib /lib64; do
+				[ -d "$libdir" ] || continue
+				ln -sfn "$libsrc" "$libdir/libtinfo.so.5" 2>/dev/null || true
+			done
+			break
+		fi
+	done
+
+	ldconfig 2>/dev/null || true
+
+	if command -v locale-gen >/dev/null 2>&1; then
+		locale-gen en_US.UTF-8 >/dev/null 2>&1 || true
+	fi
 }
 
 prepareAstra1_7(){
@@ -331,6 +378,8 @@ prepareOS(){
 				*) exitScript 1 "This version ($DISTRO_VERSION) of Alma Linux is not supported";;
 			esac
 			;;
+		arch|archlinux)
+			prepareArch;;
 		astra)
 			case $DISTRO_VERSION in
 				1.7_x86-64) prepareAstra1_7;;
