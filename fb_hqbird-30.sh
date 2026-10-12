@@ -6,7 +6,6 @@
 
 FB_VER=3.0
 FTP_URL="https://cc.ib-aid.com/download/distr"
-FB_ROOT=/opt/firebird
 
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
@@ -127,34 +126,35 @@ configureCentosFW(){
 	fi
 }
 
-prepareAlma9(){
-	dnf update -y || exitScript 1 "Error updating OS"
-	dnf install -y epel-release || exitScript 1 "Error installing software"
-	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc java-1.8.0-openjdk || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
-	configureCentosFW 8082,8083,8721,3050,3059,40000
-}
-
-prepareAlma10(){
-	dnf update -y || exitScript 1 "Error updating OS"
-	dnf install -y epel-release || exitScript 1 "Error installing software"
-	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
-
-	echo Installing Adoptium Java 8 ===============================================
-	cat <<EOF > /etc/yum.repos.d/adoptium.repo
-[Adoptium]
-name=Adoptium
-baseurl=https://packages.adoptium.net/artifactory/rpm/centos/10/x86_64
-enabled=1
-gpgcheck=1
-gpgkey=https://packages.adoptium.net/artifactory/api/gpg/key/public
-EOF
-
-	dnf update -y || exitScript 1 "Error updating OS"
-	dnf install -y temurin-8-jre || exitScript 1 "Error installing Java"
-	chcon -t bin_t /usr/lib/jvm/temurin-8-jre/bin/java
-	configureCentosFW 8082,8083,8721,3050,3059,40000
+configureUFW(){
+    if ! command -v ufw &> /dev/null; then
+        echo "Error: UFW not installed."
+        return 1
+    fi
+    if [ $# -eq 0 ]; then
+        echo "No port(s) passed"
+        return 1
+    fi
+    local ports=("$@")
+    echo "Opening ports: ${ports[*]}"
+    for port in "${ports[@]}"; do
+        if [[ ! "$port" =~ ^[0-9]+$ ]] || [ "$port" -lt 1 ] || [ "$port" -gt 65535 ]; then
+            echo "Warning: '$port' is not valid (not in 1 - 65535). Skipping."
+            continue
+        fi
+        echo "Opening port $port..."
+        if sudo ufw allow "$port"/tcp comment "Open port $port via script"; then
+            echo "Port $port (TCP) successfully opened."
+        else
+            echo "Error opening port $port (TCP)"
+        fi
+        # optional: open UDP port
+        # if sudo ufw allow "$port"/udp comment "Open port $port (UDP) via script"; then
+        #     echo "✓ Порт $port (UDP) успешно открыт"
+        # fi
+    done
+    echo "Current UFW status:"
+    ufw status numbered
 }
 
 checkLine(){
@@ -198,6 +198,36 @@ checkRepo(){
 	fi
 }
 
+prepareAlma9(){
+	dnf update -y || exitScript 1 "Error updating OS"
+	dnf install -y epel-release || exitScript 1 "Error installing software"
+	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc java-1.8.0-openjdk || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	configureCentosFW 8082,8083,8721,3050,3059,40000
+}
+
+prepareAlma10(){
+	dnf update -y || exitScript 1 "Error updating OS"
+	dnf install -y epel-release || exitScript 1 "Error installing software"
+	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
+	ln -s libtommath.so.1 /lib64/libtommath.so.0
+
+	echo Installing Adoptium Java 8 ===============================================
+	cat <<EOF > /etc/yum.repos.d/adoptium.repo
+[Adoptium]
+name=Adoptium
+baseurl=https://packages.adoptium.net/artifactory/rpm/centos/10/x86_64
+enabled=1
+gpgcheck=1
+gpgkey=https://packages.adoptium.net/artifactory/api/gpg/key/public
+EOF
+
+	dnf update -y || exitScript 1 "Error updating OS"
+	dnf install -y temurin-8-jre || exitScript 1 "Error installing Java"
+	chcon -t bin_t /usr/lib/jvm/temurin-8-jre/bin/java
+	configureCentosFW 8082,8083,8721,3050,3059,40000
+}
+
 prepareAstra1_7(){
 	checkRepo "deb https://download.astralinux.ru/astra/stable/1.7_x86-64/repository-base/ 1.7_x86-64 main contrib non-free"
 	apt update || exitScript 1 "Error updating OS"
@@ -225,6 +255,12 @@ prepareAstra1_8(){
 
 	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
+}
+
+prepareCachyOS(){
+	pacman -Syu || exitScript 1 "Error updating OS"
+	pacman -S jdk8-openjdk libtommath ncurses icu wget curl tar xz lsof --noconfirm || exitScript 1 "Error installing software"
+	configureUFW 8082 8083 8721 3050 3059 40000
 }
 
 prepareCentos7(){
@@ -303,8 +339,7 @@ prepareDebian13(){
 	echo "deb https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list
 	apt update || exitScript 1 "Error updating OS"
 	apt install -y temurin-8-jre || exitScript 1 "Error installing Java"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
-	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
 
@@ -438,6 +473,9 @@ prepareUbuntu26(){
 }
 
 prepareOS(){
+	if [[ -z $DISTRO_VERSION ]]; then	# Cannot detect distro version (e.g. cache)
+		DISTRO_VERSION=none
+	fi
 	echo "Distro: $DISTRO_PRETTY_NAME"
 	echo "ID/Version: $DISTRO_NAME/$DISTRO_VERSION"
 	case $DISTRO_NAME in
@@ -455,6 +493,7 @@ prepareOS(){
 				*) exitScript 1 "This version ($DISTRO_VERSION) of ($DISTRO_PRETTY_NAME) is not supported";;
 			esac
 			;;
+		cachyos)	prepareCachyOS;;		# Hmmm... Seems, cache os has no version(s)
 		centos)
 			case $DISTRO_VERSION in
 				7) prepareCentos7;;
@@ -510,6 +549,14 @@ prepareOS(){
 				*)	echo "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
 			esac
 			;;
+		zorin)
+			case $VERSION in	# Special scenario for Zorin OS
+				16.*,17.1,17.2)	prepareUbuntu20;;
+				17.3)		prepareUbuntu22;;
+				18.*)		prepareUbuntu24;;
+				*)		exitScript 1 "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
+			esac
+			;;
 		*) exitScript 1 "Your Linux distro is not supported";;
 	esac
 	append_str_to_sysctl "vm.max_map_count = $MAX_MAP_COUNT"
@@ -541,12 +588,12 @@ installFB(){
 	cd $TMP_DIR/fb
 	yes 'masterkey' | ./install.sh
 	cd $OLD_DIR
-	cp -rf $TMP_DIR/conf/*.conf $FB_ROOT
+	cp -rf $TMP_DIR/conf/*.conf /opt/firebird
 	if [ $DBG_INFO -ne 0 ]; then
 		echo "Extracting debug info..."
-		tar xvf $TMP_DIR/dbg.tar.xz --directory=$FB_ROOT/ --strip-components=3 > /dev/null || exit_script 1 "Error unpacking debug info archive"
+		tar xvf $TMP_DIR/dbg.tar.xz --directory=/opt/firebird/ --strip-components=3 > /dev/null || exit_script 1 "Error unpacking debug info archive"
 	fi	
-	chown -R firebird:firebird $FB_ROOT/examples/empbuild
+	chown -R firebird:firebird /opt/firebird/examples/empbuild
 }
 
 installHQ(){
@@ -572,16 +619,16 @@ installHQ(){
 	mv /opt/hqbird/amv2/graphschema.json /opt/hqbird/outdataguard/mon/logs
 	echo "Running HQbird setup"
 	sh /opt/hqbird/hqbird-setup
-	rm -f $FB_ROOT/plugins/libfbtrace2db.so 2 > /dev/null
+	rm -f /opt/firebird/plugins/libfbtrace2db.so 2 > /dev/null
 	# Store info for uninstall
-	echo "$FB_ROOT/" > /opt/hqbird/fb-instances.txt
+	echo "/opt/firebird/" > /opt/hqbird/fb-instances.txt
 }
 
 registerHQ(){
 	echo Registering HQbird ========================================================
 	mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv
 	cp -R /opt/hqbird/conf/.defaults/server/* /opt/hqbird/conf/agent/servers/hqbirdsrv
-	sed -i "s#server.installation =.*#server.installation=$FB_ROOT#g" /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
+	sed -i 's#server.installation =.*#server.installation=/opt/firebird#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 	sed -i 's#server.bin.*#server.bin = ${server.installation}/bin#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 	sed -i 's#server.id = .*#server.id = hqbirdsrv#g' /opt/hqbird/conf/agent/servers/hqbirdsrv/server.properties
 
@@ -597,15 +644,15 @@ registerDB(){
 	echo Registering test database =================================================
 	mkdir -p /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
 	cp -R /opt/hqbird/conf/.defaults/database3/* /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
-	java -jar /opt/hqbird/dataguard.jar -regdb="$FB_ROOT/examples/empbuild/employee.fdb" -srvver=3 -config-directory="/opt/hqbird/conf" -default-output-directory="/opt/hqbird/outdataguard"
+	java -jar /opt/hqbird/dataguard.jar -regdb="/opt/firebird/examples/empbuild/employee.fdb" -srvver=3 -config-directory="/opt/hqbird/conf" -default-output-directory="/opt/hqbird/outdataguard"
 	rm -rf /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/test_employee_fdb/
 
 	sed -i 's/db.replication_role=.*/db.replication_role=switchedoff/g' /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/*/database.properties
 	sed -i 's/job.enabled.*/job.enabled=false/g' /opt/hqbird/conf/agent/servers/hqbirdsrv/databases/*/jobs/replmon/job.properties
-	sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' $FB_ROOT/firebird.conf
+	sed -i 's/^#\s*RemoteAuxPort.*$/RemoteAuxPort = 3059/g' /opt/firebird/firebird.conf
 	#sed -i 's/ftpsrv.homedir=/ftpsrv.homedir=\/opt\/database/g' /opt/hqbird/conf/ftpsrv.properties
 	sed -i 's/ftpsrv.passivePorts=40000-40005/ftpsrv.passivePorts=40000-40000/g' /opt/hqbird/conf/ftpsrv.properties
-	chown -R firebird:firebird /opt/hqbird $FB_ROOT/firebird.conf $FB_ROOT/databases.conf
+	chown -R firebird:firebird /opt/hqbird /opt/firebird/firebird.conf /opt/firebird/databases.conf
 }
 
 startServices(){
