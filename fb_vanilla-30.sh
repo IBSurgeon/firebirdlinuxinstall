@@ -15,6 +15,11 @@ SYSCTL=/etc/sysctl.conf
 SYS_STR="vm.max_map_count"
 FB_ROOT=/opt/firebird
 DB_CONF=$FB_ROOT/databases.conf
+
+# server firebird.conf 
+FB_CONF=""
+# client firebird.conf
+CL_CONF=""
 EMP_DB=$FB_ROOT/examples/empbuild/employee.fdb
 KH_STR="KeyHolderPlugin"
 
@@ -24,6 +29,7 @@ CRYPT_ONLY=0
 
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
+CRYPT_CLIENT_DIR=""
 
 MAX_MAP_COUNT=1000000
 
@@ -154,7 +160,7 @@ prepareAlma9(){
 	dnf update -y || exitScript 1 "Error updating OS"
 	dnf install -y epel-release || exitScript 1 "Error installing software"
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -162,37 +168,43 @@ prepareAlma10(){
 	dnf update -y || exitScript 1 "Error updating OS"
 	dnf install -y epel-release || exitScript 1 "Error installing software"
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
 prepareAstra1_7(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu63 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
 
 prepareAstra1_8(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu72 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg  || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
+}
+
+prepareCachyOS(){
+	pacman -Syu || exitScript 1 "Error updating OS"
+	pacman -S libtommath ncurses icu wget curl tar xz lsof --noconfirm || exitScript 1 "Error installing software"
+	configureUFW 8082 8083 8721 3050 3059 40000
 }
 
 prepareCentos7(){
 	yum update -y || exitScript 1 "Error updating OS"
 	yum install -y epel-release
-	yum install -y wget ncurses libtommath icu lsof mc java tar 
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	yum install -y wget ncurses libtommath icu lsof mc tar 
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
 prepareCentos8(){
 	yum update -y
 	yum install -y epel-release || exitScript 1 "Error installing software"
-	yum install -y wget ncurses ncurses-compat-libs libtommath icu lsof mc java tar || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	yum install -y wget ncurses ncurses-compat-libs libtommath icu lsof mc tar || exitScript 1 "Error installing software"
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -200,7 +212,7 @@ prepareCentos9(){
 	dnf update -y
 	dnf install -y epel-release || exitScript 1 "Error installing software"
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -208,36 +220,35 @@ prepareCentos10(){
 	dnf update -y
 	dnf install -y epel-release || exitScript 1 "Error installing software"
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software" 
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
 prepareDebian11(){
 	apt update 
 	apt install --no-install-recommends -y net-tools libtommath1 libicu67 wget unzip gettext libncurses5 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
 
 prepareDebian12(){
 	apt update 
 	apt install --no-install-recommends -y net-tools libtommath1 libicu72 wget unzip gettext libncurses5 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
 
 prepareDebian13(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu76 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
-	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
 
 prepareSuse15(){
 	zypper -n update
 	zypper -n install insserv sysvinit-tools wget libtommath1 libicu73_2 lsof tar mc
-	ln -s libtommath.so.1 /usr/lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /usr/lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -245,7 +256,7 @@ prepareOracle8(){
 	dnf update -y
 	dnf install -y oracle-epel-release-el8
 	dnf install -y tar wget mc ncurses-compat-libs libicu libtommath
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -255,7 +266,7 @@ prepareOracle9(){
 	dnf config-manager --enable ol9_developer_EPEL
 	dnf update -y
 	dnf install -y tar wget mc ncurses-compat-libs libicu libtommath
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -264,7 +275,7 @@ prepareOracle10(){
 	dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm  -y
 	dnf update -y
 	dnf install -y tar wget mc ncurses-compat-libs libicu libtommath
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -272,7 +283,7 @@ prepareRocky8(){
 	dnf -y update || exitScript 1 "Error updating OS"
 	dnf -y install epel-release
 	dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs tar
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -280,20 +291,20 @@ prepareRocky9(){
 	dnf -y update || exitScript 1 "Error updating OS"
 	dnf -y install epel-release
 	dnf -y install findutils libtommath libicu xz mc ncurses-libs ncurses-compat-libs tar
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
 prepareRedOS7(){
 	dnf update -y || exitScript 1 "Error updating OS"
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 }
 
 prepareRedOS8(){
 	dnf update -y || exitScript 1 "Error updating OS"
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
@@ -301,37 +312,37 @@ prepareRocky10(){
 	dnf update -y || exitScript 1 "Error updating OS"
 	dnf install -y epel-release
 	dnf install -y wget ncurses ncurses-compat-libs libtommath icu lsof tar mc 
-	ln -s libtommath.so.1 /lib64/libtommath.so.0
+	ln -sf libtommath.so.1 /lib64/libtommath.so.0
 	configureCentosFW 3050,3059
 }
 
 prepareUbuntu20(){
 	apt update -y # Updating Ubuntu 20 will definitely give an error
 	apt install --no-install-recommends -y net-tools libtommath1 libicu66 wget unzip gettext libncurses5 curl tar tzdata locales sudo mc xz-utils file bsdmainutils || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
 	locale-gen "en_US.UTF-8"
 }
 
 prepareUbuntu22(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu70 wget unzip gettext libncurses5 curl tar tzdata locales sudo mc xz-utils file bsdmainutils || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
 	locale-gen "en_US.UTF-8"
 }
 
 prepareUbuntu24(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu74 bsdmainutils || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
-	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -sf libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 	locale-gen "en_US.UTF-8"
 }
 
 prepareUbuntu26(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y ca-certificates net-tools wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file libtommath1 libicu78 bsdmainutils || exitScript 1 "Error installing software"
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
-	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -sf libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
+	ln -sf libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
 	locale-gen "en_US.UTF-8"
 }
 
@@ -353,6 +364,7 @@ prepareOS(){
 				*) exitScript 1 "This version ($DISTRO_VERSION) of ($DISTRO_PRETTY_NAME) is not supported";;
 			esac
 			;;
+		cachyos)	prepareCachyOS;;		# Hmmm... Seems, cache os has no version(s)
 		centos)
 			case $DISTRO_VERSION in
 				7) prepareCentos7;;
@@ -408,6 +420,14 @@ prepareOS(){
 				*)	echo "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
 			esac
 			;;
+		zorin)
+			case $VERSION in	# Ubuntu scenarios work here too
+				16.*,17.1,17.2)	prepareUbuntu20;;
+				17.3)		prepareUbuntu22;;
+				18.*)		prepareUbuntu24;;
+				*)		exitScript 1 "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
+			esac
+			;;
 		*) exitScript 1 "Your Linux distro is not supported";;
 	esac
 	append_str_to_sysctl "vm.max_map_count = $MAX_MAP_COUNT"
@@ -420,63 +440,129 @@ downloadFiles(){
 }
 
 installFB(){
-	echo Extracting FB installer ==================================================
+	echo "================================================================"
+	echo "Extracting FB installer"
+	echo "================================================================"
 
 	mkdir $TMP_DIR/fb $TMP_DIR/conf
 	tar xvf $TMP_DIR/Firebird-3*.gz -C $TMP_DIR/fb --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB archive"
 	tar xvf $TMP_DIR/confv.tar.xz -C $TMP_DIR/conf > /dev/null || exit_script 1 "Error unpacking conf archive"
 	echo "Extraction OK"
 
-	echo Running FB installer =====================================================
+	echo "================================================================"
+	echo "Running FB installer"
+	echo "================================================================"
 
 	cd $TMP_DIR/fb
 	yes 'masterkey' | ./install.sh
 	cd $OLD_DIR
-	cp -rf $TMP_DIR/conf/*.conf $FB_ROOT
-	chown -R firebird:firebird $FB_ROOT/examples/empbuild
+	cp -rf $TMP_DIR/conf/*.conf /opt/firebird
+	chown -R firebird:firebird /opt/firebird/examples/empbuild
+}
+
+setParameter(){
+        local config_file=$1
+        local param=$2
+        local value=$3
+
+        if [ ! -f "$config_file" ]; then
+                touch "$config_file"
+                echo "File $config_file not found, creating..."
+        fi
+
+        par_re="^[[:space:]]*#*[[:space:]]*${param}[[:space:]]*="
+
+        if grep -qE "$par_re" "$config_file"; then
+                sed -i "s/${par_re}.*/${param} = ${value}/" "$config_file"
+                echo "Setting $param = $value"
+        else
+                echo "$param = ${value}" >> "$config_file"
+                echo "$param parameter not found, adding..."
+        fi
+}
+
+checkRoot() {
+    if [ "$(id -u)" -eq 0 ]; then
+        echo "Running from root."
+        return 0
+    fi
+    if command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
+        echo "User can sudo without password."
+        return 0
+    fi
+    echo "Running from unprivileged user (UID=$(id -u))"
+    return 1
+}
+
+canFirebirdWrite() {
+    local dir="$1"
+    # check if $dir exists
+    [ -d "$dir" ] || return 1
+    # Пытаемся от имени firebird создать тестовый каталог
+    sudo -u firebird mkdir "$dir/.firebird_write_test_$$" 2>/dev/null && {
+        sudo -u firebird rmdir "$dir/.firebird_write_test_$$" 2>/dev/null
+        return 0
+    }
+    return 1
 }
 
 installCryptPlugin(){
 	if [ ! -d $FB_ROOT ]; then
 		echo "Firebird root directory $FB_ROOT not found, exiting."
-		exit_script 1
+		exitScript 1
 	fi
 	downloadFile $FTP_URL/crypt/$CRYPT_ARC $TMP_DIR "FB crypt plugin"
 	mkdir $TMP_DIR/crypt
-	tar xvf $TMP_DIR/$CRYPT_ARC -C $TMP_DIR/crypt --strip-components=1 > /dev/null || exit_script 1 "Error unpacking FB crypto plugin"
-	cp -r $TMP_DIR/crypt/Server/{bin,plugins} $FB_ROOT
-	KH_STR="KeyHolderPlugin"
+	tar xvf $TMP_DIR/$CRYPT_ARC -C $TMP_DIR/crypt --strip-components=1 > /dev/null || exitScript 1 "Error unpacking FB crypto plugin"
+	# server part of the plugin (some builds have no Server/bin)
+	cp -r $TMP_DIR/crypt/Server/plugins $FB_ROOT/
+	
+	# assemble client environment from the same archive into CryptClient
+	TEMP_BASE=""
 
-	if grep -q $KH_STR $DB_CONF; then
-		echo "Parameter $KH_STR already set in $DB_CONF"
+	if canFirebirdWrite "$OLD_DIR"; then
+		TEMP_BASE="$OLD_DIR"
+		echo "User firebird can write to '$OLD_DIR', using it..."
 	else
-		if grep -q $KH_STR $DB_CONF; then
-			echo "Found Employee database in $DB_CONF"
-		else
-			echo "Employee database alias not found in $DB_CONF, appending..."
-			printf "\nemployee = $EMP_DB" >> $DB_CONF
-		fi
-		echo "Setting plugin in $DB_CONF..."
-		sed -i '/^employee =/a\{\n KeyHolderPlugin = KeyHolder\n}' $DB_CONF
+		TEMP_BASE="${TMPDIR:-/tmp}"
+		echo "User firebird can NOT write to '$OLD_DIR', using '$TEMP_BASE'..."
 	fi
-	if [ -f $EMP_DB ]; then
-		$FB_ROOT/bin/isql localhost:employee -user SYSDBA -pas masterkey <<EOF
-alter database encrypt with "DbCrypt" key red;
-show database;
-EOF
+	# at last create client dir
+	CRYPT_CLIENT_DIR="$(sudo -u firebird mktemp -d "$TEMP_BASE/crypt_client.XXXXXX")"
+	echo "================================================================"
+	echo "Temporary dir $CRYPT_CLIENT_DIR created"
+	echo "Assembling client environment to $CRYPT_CLIENT_DIR"
+	echo "================================================================"
+	if [ -d $TMP_DIR/crypt/Client ]; then                                  
+		rm -rf $CRYPT_CLIENT_DIR                                       
+		mkdir $CRYPT_CLIENT_DIR                                        
+		cp -r $TMP_DIR/crypt/Client/. $CRYPT_CLIENT_DIR               
+		echo "Client environment assembled in $CRYPT_CLIENT_DIR"       
+	else                                                                   
+		echo "WARNING: no Client directory in crypt archive, CryptClient skipped." # <<< NEW
+	fi
+	echo "Setting parameter KeyHolder=$KH_STR in $FB_CONF"
+	setParameter "$FB_CONF" $KH_STR KeyHolder
+	startServices
+	
+	# deploy client test environment from the same archive and run the tests
+	if [ -f "$CRYPT_CLIENT_DIR/db-crypt/run-tests.sh" ]; then
+		bash "$CRYPT_CLIENT_DIR/db-crypt/run-tests.sh" || echo "WARNING: DbCrypt test run was not successful, see output above."
 	else
-		echo "Example database $EMP_DB not found."
-		echo "You can use employee database section in $DB_CONF as an example to encrypt your own database."
+		echo "$CRYPT_CLIENT_DIR/db-crypt/run-tests.sh not found, tests skipped."
 	fi
+	echo "================================================================"
+	echo "Cryptoclient environment assembled in $CRYPT_CLIENT_DIR"
+	echo "================================================================"
 }
 
 startServices(){
-	echo Restarting services ========================================================
+	echo "================================================================"
+	echo "Restarting services"
+	echo "================================================================"
 	systemctl stop firebird-superserver
 	systemctl start firebird-superserver
 }
-
-# Main program actions
 
 displayHelp(){
 	echo "This program will install Firebird $FB_VER on this computer
@@ -486,15 +572,19 @@ displayHelp(){
     --crypt-only[=/path/to/firebird] - install and configure ONLY crypto plugin without Firebird"
 }
 
+# Main program actions
+
+checkRoot || exitScript 1 "Run this script as root!"
+
 old_count=0
 param_count=$#
 while [[ "$#" -gt 0 ]]; do
         old_count=$#
         case "$1" in
 		"--debug"	) DEBUG=1; shift ;;
-		"--crypt"	) CRYPT=1; shift;;
-		"--crypt-only"	) CRYPT_ONLY=1; shift;;
-                "--crypt-only="*) CRYPT_ONLY=1; FB_ROOT=$(echo "$1" | sed 's/.*=//'); shift ;;
+		"--crypt"	) CRYPT=1; FB_ROOT="/opt/firebird"; FB_CONF=$FB_ROOT/firebird.conf; shift;;
+		"--crypt-only"	) CRYPT_ONLY=1; FB_ROOT="/opt/firebird"; FB_CONF=$FB_ROOT/firebird.conf; shift;;
+                "--crypt-only="*) CRYPT_ONLY=1; FB_ROOT=$(echo "$1" | sed 's/.*=//'); FB_CONF=$FB_ROOT/firebird.conf; echo "FB_CONF=$FB_CONF"; shift ;;
 		"-i"|"--info"	) displayHelp; shift;;
 	esac
 	if [ $old_count -eq $# ]; then
@@ -515,9 +605,6 @@ else
 	prepareOS
 	downloadFiles
 	installFB
-	if [ $CRYPT -eq 1 ]; then
-		installCryptPlugin
-	fi
 	if [ $DEBUG -eq 1 ]; then
 		downloadFile $DBG_URL $TMP_DIR "FB debug files"
 		echo "Installing FB debug files"
@@ -525,7 +612,11 @@ else
 		tar xvf $TMP_DIR/Firebird-debuginfo-3.*.amd64.tar.gz -C $TMP_DIR/debug > /dev/null || exit_script 1 "Error unpacking FB debug info"
 		cp -R $TMP_DIR/debug/opt/firebird/* $FB_ROOT
 	fi
-	startServices
+	if [ $CRYPT -eq 1 ]; then
+		installCryptPlugin	# this will restart firebird itself
+	else
+		startServices		# or we shell restart it here 
+	fi
 fi
 
 exitScript 0

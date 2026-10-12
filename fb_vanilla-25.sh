@@ -7,7 +7,6 @@
 FB_VER=2.5
 FB_URL="https://github.com/FirebirdSQL/firebird/releases/download/R2_5_9/FirebirdCS-2.5.9.27139-0.amd64.tar.gz"
 FTP_URL="https://cc.ib-aid.com/download/distr"
-FB_ROOT=/opt/firebird
 
 TMP_DIR=$(mktemp -d)
 OLD_DIR=$(pwd -P)
@@ -163,6 +162,11 @@ prepareAstra1_8(){
 	locale-gen "en_US.UTF-8"
 }
 
+prepareCachyOS(){
+	pacman -Syu || exitScript 1 "Error updating OS"
+	pacman -S libtommath ncurses icu wget curl tar xz lsof --noconfirm || exitScript 1 "Error installing software"
+	configureUFW 8082 8083 8721 3050 3059 40000
+}
 
 prepareCentos7(){
 	yum update -y || exitScript 1 "Error updating OS"
@@ -216,8 +220,7 @@ prepareDebian13(){
 	apt update || exitScript 1 "Error updating OS"
 	apt install --no-install-recommends -y net-tools libtommath1 libicu76 wget unzip gettext libncurses6 curl tar tzdata locales sudo mc xz-utils file apt-transport-https gpg || exitScript 1 "Error installing software"
 	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
-	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0
-	ln -s libncurses.so.6 /usr/lib/x86_64-linux-gnu/libncurses.so.5
+	ln -s libtommath.so.1 /usr/lib/x86_64-linux-gnu/libtommath.so.0 
 	locale-gen "en_US.UTF-8"
 }
 
@@ -340,6 +343,7 @@ prepareOS(){
 				*) exitScript 1 "This version ($DISTRO_VERSION) of ($DISTRO_PRETTY_NAME) is not supported";;
 			esac
 			;;
+		cachyos)	prepareCachyOS;;		# Hmmm... Seems, cache os has no version(s)
 		centos)
 			case $DISTRO_VERSION in
 				7) prepareCentos7;;
@@ -395,6 +399,14 @@ prepareOS(){
 				*)	echo "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
 			esac
 			;;
+		zorin)
+			case $VERSION in	# Ubuntu scenarios work here too
+				16.*,17.1,17.2)	prepareUbuntu20;;
+				17.3)		prepareUbuntu22;;
+				18.*)		prepareUbuntu24;;
+				*)		exitScript 1 "This version ($DISTRO_VERSION) of Ubuntu Linux is not supported";;
+			esac
+			;;
 		*) exitScript 1 "Your Linux distro is not supported";;
 	esac
 	append_str_to_sysctl "vm.max_map_count = $MAX_MAP_COUNT"
@@ -433,12 +445,12 @@ installFB(){
 	cd $TMP_DIR/fb
 
 	yes "masterkey" | ./install.sh
-	cp $TMP_DIR/systemd-files/changeSystemdMode.sh $FB_ROOT/bin/
+	cp $TMP_DIR/systemd-files/changeSystemdMode.sh /opt/firebird/bin/
 
 	cd $OLD_DIR
-	cp -rf $TMP_DIR/conf/*.conf $FB_ROOT
-	$FB_ROOT/bin/changeSystemdMode.sh thread
-	chown -R firebird:firebird $FB_ROOT/examples/empbuild
+	cp -rf $TMP_DIR/conf/*.conf /opt/firebird
+	/opt/firebird/bin/changeSystemdMode.sh thread
+	chown -R firebird:firebird /opt/firebird/examples/empbuild
 }
 
 startServices(){
